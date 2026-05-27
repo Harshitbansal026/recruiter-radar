@@ -244,4 +244,4 @@ Goal: Make the project presentable for recruiters and interviews.
 
 ## Commit Log
 
-- No commits yet.
+- `fabdaca` - Initial project setup.
