@@ -33,8 +33,8 @@ No project commit should be considered complete unless this file has been checke
 
 Goal: Prove the data pipeline before building the full UI.
 
-- [ ] Accept a CSV of up to 30 companies.
-- [ ] Support company fields:
+- [x] Accept a CSV of up to 30 companies.
+- [x] Support company fields:
   - `company_name`
   - `linkedin_company_url`
   - `linkedin_search_url`
@@ -247,3 +247,4 @@ Goal: Make the project presentable for recruiters and interviews.
 
 - `fabdaca` - Initial project setup.
 - `df60c7b` - Update plan commit log.
+- `ea811ec` - Use TypeScript for initial scripts.
