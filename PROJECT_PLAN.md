@@ -240,7 +240,8 @@ Goal: Make the project presentable for recruiters and interviews.
 - Email verification strategy: custom confidence service first, third-party APIs optional.
 - Export strategy: all contacts and qualified contacts.
 - Product positioning: recruiter discovery and outreach assistant, not a spam or bulk-scraping tool.
-- Initial script language: Python.
+- Initial script language: TypeScript running on Node.js.
+- Decision update: The initial script language was changed from Python to TypeScript before Phase 1 so the scraper pipeline and future Next.js app use the same language.
 
 ## Commit Log
 

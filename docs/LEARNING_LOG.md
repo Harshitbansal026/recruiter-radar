@@ -24,3 +24,6 @@ Environment variables store configuration and secrets outside the source code. W
 
 CSV means comma-separated values. It is a simple table format that is easy to read, edit, and process with scripts.
 
+### TypeScript And Node.js
+
+TypeScript is JavaScript with types. Node.js lets JavaScript/TypeScript run outside the browser, which is useful for scripts, API calls, file reading, and backend work.
