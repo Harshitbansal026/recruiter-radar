@@ -18,6 +18,10 @@
     {
       "url": "https://www.linkedin.com/posts/example-company_talent-acquisition-activity-2",
       "text": "Our talent acquisition team is reviewing referrals this week. Contact recruiting@example.com for relevant roles. Apply at https://jobs.lever.co/example-company/frontend-engineer."
+    },
+    {
+      "url": "https://www.linkedin.com/posts/example-company_unofficial-referral-activity-3",
+      "text": "Sharing this hiring post from a friend. You can also reach me at example.referral@gmail.com."
     }
   ],
   "cachedAt": "2026-05-29T00:00:00.000Z"

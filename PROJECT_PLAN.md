@@ -69,7 +69,7 @@ Goal: Extract useful contact and domain intelligence from scraped post data.
   - career domain
   - job-board domain
   - unrelated domain
-- [ ] Identify and ignore non-company email domains where appropriate.
+- [x] Identify and ignore non-company email domains where appropriate.
 - [x] Track source post URL and source text snippet.
 - [ ] Add domain confidence scoring.
 - [ ] Update company CSV with identified domains.
@@ -258,3 +258,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `e01843b` - Add configurable scrape limit.
 - `6ac6eb5` - Add cached post contact extraction.
 - `5bde83c` - Extract domains from cached posts.
+- `0d39f36` - Classify job board domains.

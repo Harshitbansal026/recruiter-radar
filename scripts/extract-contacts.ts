@@ -18,7 +18,7 @@ type ExtractedContact = {
   emailDomain: string;
   sourceUrl: string;
   sourceText: string;
-  confidence: "high" | "medium";
+  confidence: "high" | "medium" | "low";
   reason: string;
 };
 
@@ -40,6 +40,15 @@ const JOB_BOARD_DOMAINS = [
   "workdayjobs.com",
   "myworkdayjobs.com",
 ];
+const PERSONAL_EMAIL_DOMAINS = [
+  "gmail.com",
+  "yahoo.com",
+  "outlook.com",
+  "hotmail.com",
+  "icloud.com",
+  "proton.me",
+  "protonmail.com",
+];
 
 function getStringValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -59,6 +68,10 @@ function getUniqueMatches(text: string, pattern: RegExp): string[] {
 
 function getDomainFromEmail(email: string): string {
   return email.split("@")[1]?.toLowerCase() ?? "";
+}
+
+function isPersonalEmailDomain(domain: string): boolean {
+  return PERSONAL_EMAIL_DOMAINS.includes(domain);
 }
 
 function getDomainFromUrl(url: string): string {
@@ -128,14 +141,19 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
     const emails = getUniqueMatches(sourceText, EMAIL_PATTERN);
 
     for (const email of emails) {
+      const emailDomain = getDomainFromEmail(email);
+      const isPersonalDomain = isPersonalEmailDomain(emailDomain);
+
       contacts.push({
         companyName: cachedRun.companyName,
         email: email.toLowerCase(),
-        emailDomain: getDomainFromEmail(email),
+        emailDomain,
         sourceUrl,
         sourceText,
-        confidence: "high",
-        reason: "Email was found directly in scraped post text.",
+        confidence: isPersonalDomain ? "low" : "high",
+        reason: isPersonalDomain
+          ? "Email was found in post text but uses a personal email domain."
+          : "Email was found directly in scraped post text.",
       });
     }
   }
