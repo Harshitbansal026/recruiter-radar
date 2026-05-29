@@ -52,7 +52,7 @@ Goal: Prove the data pipeline before building the full UI.
   - date boundary with `scrapeUntil`
   - `deepScrape` disabled by default
   - `rawData` disabled by default
-- [ ] Make scraping incremental using `last_scraped_at`.
+- [x] Make scraping incremental using `last_scraped_at`.
 - [ ] Cache raw or normalized Apify results locally.
 - [x] Avoid re-scraping companies with `skip_domain_scrape = true` when domain data is already strong.
 
@@ -261,3 +261,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `0d39f36` - Classify job board domains.
 - `665e10b` - Filter personal email domains from qualified contacts.
 - `593b70a` - Add scrape command help.
+- `b83b500` - Skip companies with known domains.
