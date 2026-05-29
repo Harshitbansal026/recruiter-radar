@@ -252,3 +252,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `1880ec9` - Add TypeScript CSV company reader.
 - `c4cc141` - Add Apify dry run payload builder.
 - `a4942f1` - Save Apify dry run payload cache.
+- `fe25e57` - Cache live Apify run results.

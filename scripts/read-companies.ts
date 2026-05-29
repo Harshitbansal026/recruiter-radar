@@ -115,6 +115,44 @@ function createTimestamp(): string {
   return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
+function getArgValue(flag: string): string | undefined {
+  const flagIndex = process.argv.indexOf(flag);
+
+  if (flagIndex === -1) {
+    return undefined;
+  }
+
+  return process.argv[flagIndex + 1];
+}
+
+function getSelectedCompanyName(): string | undefined {
+  const explicitCompanyName = getArgValue("--company");
+
+  if (explicitCompanyName) {
+    return explicitCompanyName;
+  }
+
+  return process.argv
+    .slice(2)
+    .find((argument) => !argument.startsWith("--") && argument !== "live");
+}
+
+function filterCompanies(companies: CompanyRow[], companyName?: string): CompanyRow[] {
+  if (!companyName) {
+    return companies;
+  }
+
+  const filteredCompanies = companies.filter(
+    (company) => company.company_name.toLowerCase() === companyName.toLowerCase(),
+  );
+
+  if (filteredCompanies.length === 0) {
+    throw new Error(`No company found matching --company "${companyName}".`);
+  }
+
+  return filteredCompanies;
+}
+
 function buildApifyInput(company: CompanyRow): ApifyLinkedInPostInput {
   const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
   const input: ApifyLinkedInPostInput = {
@@ -188,14 +226,17 @@ async function runApifyActor(company: CompanyRow, input: ApifyLinkedInPostInput)
 
 async function main() {
   const isLiveRun = process.argv.includes("--live");
+  const selectedCompanyName = getSelectedCompanyName();
   const csvPath = path.resolve("data/input/companies.sample.csv");
   const csvText = await readFile(csvPath, "utf8");
   const companies = parseCompaniesCsv(csvText);
+  const selectedCompanies = filterCompanies(companies, selectedCompanyName);
 
   console.log(`Loaded ${companies.length} companies from ${csvPath}`);
+  console.log(`Selected ${selectedCompanies.length} companies for this run`);
   console.log(isLiveRun ? "Mode: live Apify run" : "Mode: dry run");
 
-  const scrapePlans = companies.map(buildScrapePlan);
+  const scrapePlans = selectedCompanies.map(buildScrapePlan);
   const dryRunPath = path.resolve("data/cache/apify-dry-run-payloads.json");
   await saveJson(dryRunPath, scrapePlans);
   console.log(`Saved dry-run payloads to ${dryRunPath}`);
@@ -204,7 +245,7 @@ async function main() {
     console.log(scrapePlan);
 
     if (isLiveRun) {
-      const company = companies.find((row) => row.company_name === scrapePlan.companyName);
+      const company = selectedCompanies.find((row) => row.company_name === scrapePlan.companyName);
 
       if (!company) {
         throw new Error(`Could not find company row for ${scrapePlan.companyName}.`);
