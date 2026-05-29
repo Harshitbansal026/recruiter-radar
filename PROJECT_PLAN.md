@@ -254,3 +254,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `a4942f1` - Save Apify dry run payload cache.
 - `fe25e57` - Cache live Apify run results.
 - `63fa072` - Add single company scrape filter.
+- `022acdf` - Lower default LinkedIn scrape limit.

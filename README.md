@@ -22,3 +22,30 @@ The project starts with a CSV-based pipeline that uses public LinkedIn post data
 
 Phase 0 setup is in progress.
 
+## Current Script Commands
+
+Run TypeScript checks:
+
+```bash
+npm run typecheck
+```
+
+Build dry-run Apify payloads for every company in the sample CSV:
+
+```bash
+npm run scrape:linkedin:dry
+```
+
+Build a dry-run payload for one company:
+
+```bash
+npm run scrape:linkedin:dry -- "Example Company"
+```
+
+Override the default post limit for a dry-run:
+
+```bash
+npm run scrape:linkedin:dry -- "Example Company" 3
+```
+
+Live scraping requires a local `.env` file with `APIFY_TOKEN`. Do not run the live command until the token and test company are confirmed.

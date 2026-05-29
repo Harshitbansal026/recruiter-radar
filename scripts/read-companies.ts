@@ -59,6 +59,14 @@ type ApifyRunCache = {
   cachedAt: string;
 };
 
+type RunOptions = {
+  isLiveRun: boolean;
+  selectedCompanyName?: string;
+  limitPerSource: number;
+};
+
+const DEFAULT_LIMIT_PER_SOURCE = 5;
+
 function parseCsvLine(line: string): string[] {
   return line.split(",").map((value) => value.trim());
 }
@@ -116,6 +124,12 @@ function createTimestamp(): string {
 }
 
 function getArgValue(flag: string): string | undefined {
+  const inlineArg = process.argv.find((argument) => argument.startsWith(`${flag}=`));
+
+  if (inlineArg) {
+    return inlineArg.slice(flag.length + 1);
+  }
+
   const flagIndex = process.argv.indexOf(flag);
 
   if (flagIndex === -1) {
@@ -125,16 +139,39 @@ function getArgValue(flag: string): string | undefined {
   return process.argv[flagIndex + 1];
 }
 
-function getSelectedCompanyName(): string | undefined {
+function parsePositiveInteger(value: string, label: string): number {
+  const parsedValue = Number.parseInt(value, 10);
+
+  if (!Number.isInteger(parsedValue) || parsedValue < 1) {
+    throw new Error(`${label} must be a positive integer.`);
+  }
+
+  return parsedValue;
+}
+
+function getSelectedCompanyName(args: string[]): string | undefined {
   const explicitCompanyName = getArgValue("--company");
 
   if (explicitCompanyName) {
     return explicitCompanyName;
   }
 
-  return process.argv
-    .slice(2)
-    .find((argument) => !argument.startsWith("--") && argument !== "live");
+  return args
+    .find((argument) => !argument.startsWith("--") && argument !== "live" && !/^\d+$/.test(argument));
+}
+
+function getRunOptions(): RunOptions {
+  const args = process.argv.slice(2);
+  const limitArg = getArgValue("--limit");
+  const positionalLimitArg = args.find((argument) => /^\d+$/.test(argument));
+
+  return {
+    isLiveRun: args.includes("--live"),
+    selectedCompanyName: getSelectedCompanyName(args),
+    limitPerSource: limitArg || positionalLimitArg
+      ? parsePositiveInteger(limitArg || positionalLimitArg || "", "limit")
+      : DEFAULT_LIMIT_PER_SOURCE,
+  };
 }
 
 function filterCompanies(companies: CompanyRow[], companyName?: string): CompanyRow[] {
@@ -153,11 +190,11 @@ function filterCompanies(companies: CompanyRow[], companyName?: string): Company
   return filteredCompanies;
 }
 
-function buildApifyInput(company: CompanyRow): ApifyLinkedInPostInput {
+function buildApifyInput(company: CompanyRow, limitPerSource: number): ApifyLinkedInPostInput {
   const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
   const input: ApifyLinkedInPostInput = {
     urls: [sourceUrl],
-    limitPerSource: 5,
+    limitPerSource,
     deepScrape: false,
     rawData: false,
   };
@@ -169,7 +206,7 @@ function buildApifyInput(company: CompanyRow): ApifyLinkedInPostInput {
   return input;
 }
 
-function buildScrapePlan(company: CompanyRow): CompanyScrapePlan {
+function buildScrapePlan(company: CompanyRow, limitPerSource: number): CompanyScrapePlan {
   const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
 
   return {
@@ -178,7 +215,7 @@ function buildScrapePlan(company: CompanyRow): CompanyScrapePlan {
     status: company.status || "pending",
     skipDomainScrape: toBoolean(company.skip_domain_scrape),
     identifiedDomains: company.identified_domains || "none",
-    apifyInput: buildApifyInput(company),
+    apifyInput: buildApifyInput(company, limitPerSource),
   };
 }
 
@@ -225,18 +262,20 @@ async function runApifyActor(company: CompanyRow, input: ApifyLinkedInPostInput)
 }
 
 async function main() {
-  const isLiveRun = process.argv.includes("--live");
-  const selectedCompanyName = getSelectedCompanyName();
+  const options = getRunOptions();
   const csvPath = path.resolve("data/input/companies.sample.csv");
   const csvText = await readFile(csvPath, "utf8");
   const companies = parseCompaniesCsv(csvText);
-  const selectedCompanies = filterCompanies(companies, selectedCompanyName);
+  const selectedCompanies = filterCompanies(companies, options.selectedCompanyName);
 
   console.log(`Loaded ${companies.length} companies from ${csvPath}`);
   console.log(`Selected ${selectedCompanies.length} companies for this run`);
-  console.log(isLiveRun ? "Mode: live Apify run" : "Mode: dry run");
+  console.log(options.isLiveRun ? "Mode: live Apify run" : "Mode: dry run");
+  console.log(`limitPerSource: ${options.limitPerSource}`);
 
-  const scrapePlans = selectedCompanies.map(buildScrapePlan);
+  const scrapePlans = selectedCompanies.map((company) =>
+    buildScrapePlan(company, options.limitPerSource),
+  );
   const dryRunPath = path.resolve("data/cache/apify-dry-run-payloads.json");
   await saveJson(dryRunPath, scrapePlans);
   console.log(`Saved dry-run payloads to ${dryRunPath}`);
@@ -244,7 +283,7 @@ async function main() {
   for (const scrapePlan of scrapePlans) {
     console.log(scrapePlan);
 
-    if (isLiveRun) {
+    if (options.isLiveRun) {
       const company = selectedCompanies.find((row) => row.company_name === scrapePlan.companyName);
 
       if (!company) {
