@@ -8,6 +8,8 @@
   },
   "scripts": {
     "read:companies": "tsx scripts/read-companies.ts",
+    "scrape:linkedin:dry": "tsx scripts/read-companies.ts",
+    "scrape:linkedin:live": "tsx scripts/read-companies.ts --live",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
@@ -26,5 +28,9 @@
     "@types/node": "^25.9.1",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3"
+  },
+  "dependencies": {
+    "apify-client": "^2.23.3",
+    "dotenv": "^17.4.2"
   }
 }

@@ -47,7 +47,7 @@ Goal: Prove the data pipeline before building the full UI.
   - `last_scraped_at`
   - `status`
 - [ ] Integrate Apify actor `supreme_coder/linkedin-post`.
-- [ ] Use tight scrape parameters:
+- [x] Use tight scrape parameters:
   - low `limitPerSource`
   - date boundary with `scrapeUntil`
   - `deepScrape` disabled by default
@@ -248,3 +248,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `fabdaca` - Initial project setup.
 - `df60c7b` - Update plan commit log.
 - `ea811ec` - Use TypeScript for initial scripts.
+- `1880ec9` - Add TypeScript CSV company reader.

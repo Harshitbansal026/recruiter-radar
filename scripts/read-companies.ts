@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
+import { ApifyClient } from "apify-client";
+import "dotenv/config";
 
 type CompanyRow = {
   company_name: string;
@@ -28,6 +30,14 @@ const REQUIRED_COLUMNS: Array<keyof CompanyRow> = [
   "last_scraped_at",
   "status",
 ];
+
+type ApifyLinkedInPostInput = {
+  urls: string[];
+  limitPerSource: number;
+  deepScrape: boolean;
+  rawData: boolean;
+  scrapeUntil?: string;
+};
 
 function parseCsvLine(line: string): string[] {
   return line.split(",").map((value) => value.trim());
@@ -74,16 +84,55 @@ function toBoolean(value: string): boolean {
   return value.toLowerCase() === "true";
 }
 
+function buildApifyInput(company: CompanyRow): ApifyLinkedInPostInput {
+  const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
+  const input: ApifyLinkedInPostInput = {
+    urls: [sourceUrl],
+    limitPerSource: 10,
+    deepScrape: false,
+    rawData: false,
+  };
+
+  if (company.last_scraped_at) {
+    input.scrapeUntil = company.last_scraped_at;
+  }
+
+  return input;
+}
+
+async function runApifyActor(company: CompanyRow, input: ApifyLinkedInPostInput) {
+  const token = process.env.APIFY_TOKEN;
+  const actorId = process.env.APIFY_LINKEDIN_POST_ACTOR || "supreme_coder/linkedin-post";
+
+  if (!token) {
+    throw new Error("APIFY_TOKEN is missing. Add it to a local .env file before running with --live.");
+  }
+
+  const client = new ApifyClient({ token });
+  const run = await client.actor(actorId).call(input);
+  const datasetItems = await client.dataset(run.defaultDatasetId).listItems();
+
+  return {
+    actorId,
+    runId: run.id,
+    datasetId: run.defaultDatasetId,
+    itemCount: datasetItems.items.length,
+  };
+}
+
 async function main() {
+  const isLiveRun = process.argv.includes("--live");
   const csvPath = path.resolve("data/input/companies.sample.csv");
   const csvText = await readFile(csvPath, "utf8");
   const companies = parseCompaniesCsv(csvText);
 
   console.log(`Loaded ${companies.length} companies from ${csvPath}`);
+  console.log(isLiveRun ? "Mode: live Apify run" : "Mode: dry run");
 
   for (const company of companies) {
     const skipDomainScrape = toBoolean(company.skip_domain_scrape);
     const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
+    const apifyInput = buildApifyInput(company);
 
     console.log({
       company: company.company_name,
@@ -91,7 +140,16 @@ async function main() {
       status: company.status || "pending",
       skipDomainScrape,
       identifiedDomains: company.identified_domains || "none",
+      apifyInput,
     });
+
+    if (isLiveRun) {
+      const result = await runApifyActor(company, apifyInput);
+      console.log({
+        company: company.company_name,
+        ...result,
+      });
+    }
   }
 }
 
@@ -104,4 +162,3 @@ main().catch((error: unknown) => {
 
   process.exit(1);
 });
-
