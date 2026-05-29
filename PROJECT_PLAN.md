@@ -62,7 +62,7 @@ Goal: Extract useful contact and domain intelligence from scraped post data.
 
 - [x] Extract visible emails from post text.
 - [x] Extract domains from emails.
-- [ ] Extract domains from URLs and apply links in posts.
+- [x] Extract domains from URLs and apply links in posts.
 - [ ] Classify domains:
   - primary company domain
   - email domain
@@ -256,3 +256,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `63fa072` - Add single company scrape filter.
 - `022acdf` - Lower default LinkedIn scrape limit.
 - `e01843b` - Add configurable scrape limit.
+- `6ac6eb5` - Add cached post contact extraction.
