@@ -25,7 +25,7 @@ type ExtractedContact = {
 type ExtractedDomain = {
   companyName: string;
   domain: string;
-  domainType: "email_domain" | "career_domain" | "external_domain";
+  domainType: "email_domain" | "career_domain" | "job_board_domain" | "external_domain";
   sourceUrl: string;
   sourceText: string;
   reason: string;
@@ -33,6 +33,13 @@ type ExtractedDomain = {
 
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const URL_PATTERN = /https?:\/\/[^\s)]+/gi;
+const JOB_BOARD_DOMAINS = [
+  "greenhouse.io",
+  "lever.co",
+  "ashbyhq.com",
+  "workdayjobs.com",
+  "myworkdayjobs.com",
+];
 
 function getStringValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -63,6 +70,12 @@ function getDomainFromUrl(url: string): string {
 }
 
 function classifyUrlDomain(url: string): ExtractedDomain["domainType"] {
+  const domain = getDomainFromUrl(url);
+
+  if (JOB_BOARD_DOMAINS.some((jobBoardDomain) => domain.endsWith(jobBoardDomain))) {
+    return "job_board_domain";
+  }
+
   return /career|jobs|job|apply/i.test(url) ? "career_domain" : "external_domain";
 }
 
@@ -175,7 +188,9 @@ function extractDomainsFromRun(cachedRun: CachedApifyRun): ExtractedDomain[] {
           reason:
             domainType === "career_domain"
               ? "Domain was extracted from a hiring/apply URL in post text."
-              : "Domain was extracted from a URL in post text.",
+              : domainType === "job_board_domain"
+                ? "Domain was identified as a known job-board domain in post text."
+                : "Domain was extracted from a URL in post text.",
         });
       }
     }
