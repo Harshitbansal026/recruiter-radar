@@ -253,3 +253,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `c4cc141` - Add Apify dry run payload builder.
 - `a4942f1` - Save Apify dry run payload cache.
 - `fe25e57` - Cache live Apify run results.
+- `63fa072` - Add single company scrape filter.

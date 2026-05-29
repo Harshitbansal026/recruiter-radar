@@ -157,7 +157,7 @@ function buildApifyInput(company: CompanyRow): ApifyLinkedInPostInput {
   const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
   const input: ApifyLinkedInPostInput = {
     urls: [sourceUrl],
-    limitPerSource: 10,
+    limitPerSource: 5,
     deepScrape: false,
     rawData: false,
   };
