@@ -60,8 +60,8 @@ Goal: Prove the data pipeline before building the full UI.
 
 Goal: Extract useful contact and domain intelligence from scraped post data.
 
-- [ ] Extract visible emails from post text.
-- [ ] Extract domains from emails.
+- [x] Extract visible emails from post text.
+- [x] Extract domains from emails.
 - [ ] Extract domains from URLs and apply links in posts.
 - [ ] Classify domains:
   - primary company domain
@@ -70,11 +70,11 @@ Goal: Extract useful contact and domain intelligence from scraped post data.
   - job-board domain
   - unrelated domain
 - [ ] Identify and ignore non-company email domains where appropriate.
-- [ ] Track source post URL and source text snippet.
+- [x] Track source post URL and source text snippet.
 - [ ] Add domain confidence scoring.
 - [ ] Update company CSV with identified domains.
-- [ ] Produce `all_contacts.csv`.
-- [ ] Produce `qualified_contacts.csv` using confidence thresholds.
+- [x] Produce `all_contacts.csv`.
+- [x] Produce `qualified_contacts.csv` using confidence thresholds.
 
 ## Phase 3: Custom Email Confidence Service
 
@@ -255,3 +255,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `fe25e57` - Cache live Apify run results.
 - `63fa072` - Add single company scrape filter.
 - `022acdf` - Lower default LinkedIn scrape limit.
+- `e01843b` - Add configurable scrape limit.

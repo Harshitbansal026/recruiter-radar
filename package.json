@@ -10,6 +10,7 @@
     "read:companies": "tsx scripts/read-companies.ts",
     "scrape:linkedin:dry": "tsx scripts/read-companies.ts",
     "scrape:linkedin:live": "tsx scripts/read-companies.ts --live",
+    "extract:contacts": "tsx scripts/extract-contacts.ts",
     "typecheck": "tsc --noEmit"
   },
   "repository": {
