@@ -15,12 +15,13 @@ __pycache__/
 *.log
 
 # Local outputs and caches
-data/output/
-data/cache/
+data/output/*
+data/cache/*
+!data/output/.gitkeep
+!data/cache/.gitkeep
 
 # OS/editor files
 .DS_Store
 Thumbs.db
 .vscode/
 .idea/
-

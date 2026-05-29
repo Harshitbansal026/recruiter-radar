@@ -1,4 +1,4 @@
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { ApifyClient } from "apify-client";
 import "dotenv/config";
@@ -37,6 +37,15 @@ type ApifyLinkedInPostInput = {
   deepScrape: boolean;
   rawData: boolean;
   scrapeUntil?: string;
+};
+
+type CompanyScrapePlan = {
+  companyName: string;
+  sourceUrl: string;
+  status: string;
+  skipDomainScrape: boolean;
+  identifiedDomains: string;
+  apifyInput: ApifyLinkedInPostInput;
 };
 
 function parseCsvLine(line: string): string[] {
@@ -100,6 +109,24 @@ function buildApifyInput(company: CompanyRow): ApifyLinkedInPostInput {
   return input;
 }
 
+function buildScrapePlan(company: CompanyRow): CompanyScrapePlan {
+  const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
+
+  return {
+    companyName: company.company_name,
+    sourceUrl,
+    status: company.status || "pending",
+    skipDomainScrape: toBoolean(company.skip_domain_scrape),
+    identifiedDomains: company.identified_domains || "none",
+    apifyInput: buildApifyInput(company),
+  };
+}
+
+async function saveJson(filePath: string, data: unknown) {
+  await mkdir(path.dirname(filePath), { recursive: true });
+  await writeFile(filePath, `${JSON.stringify(data, null, 2)}\n`, "utf8");
+}
+
 async function runApifyActor(company: CompanyRow, input: ApifyLinkedInPostInput) {
   const token = process.env.APIFY_TOKEN;
   const actorId = process.env.APIFY_LINKEDIN_POST_ACTOR || "supreme_coder/linkedin-post";
@@ -129,24 +156,24 @@ async function main() {
   console.log(`Loaded ${companies.length} companies from ${csvPath}`);
   console.log(isLiveRun ? "Mode: live Apify run" : "Mode: dry run");
 
-  for (const company of companies) {
-    const skipDomainScrape = toBoolean(company.skip_domain_scrape);
-    const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
-    const apifyInput = buildApifyInput(company);
+  const scrapePlans = companies.map(buildScrapePlan);
+  const dryRunPath = path.resolve("data/cache/apify-dry-run-payloads.json");
+  await saveJson(dryRunPath, scrapePlans);
+  console.log(`Saved dry-run payloads to ${dryRunPath}`);
 
-    console.log({
-      company: company.company_name,
-      sourceUrl,
-      status: company.status || "pending",
-      skipDomainScrape,
-      identifiedDomains: company.identified_domains || "none",
-      apifyInput,
-    });
+  for (const scrapePlan of scrapePlans) {
+    console.log(scrapePlan);
 
     if (isLiveRun) {
-      const result = await runApifyActor(company, apifyInput);
+      const company = companies.find((row) => row.company_name === scrapePlan.companyName);
+
+      if (!company) {
+        throw new Error(`Could not find company row for ${scrapePlan.companyName}.`);
+      }
+
+      const result = await runApifyActor(company, scrapePlan.apifyInput);
       console.log({
-        company: company.company_name,
+        company: scrapePlan.companyName,
         ...result,
       });
     }

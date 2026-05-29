@@ -249,3 +249,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `df60c7b` - Update plan commit log.
 - `ea811ec` - Use TypeScript for initial scripts.
 - `1880ec9` - Add TypeScript CSV company reader.
+- `c4cc141` - Add Apify dry run payload builder.
