@@ -207,6 +207,10 @@ function filterCompanies(companies: CompanyRow[], companyName?: string): Company
   return filteredCompanies;
 }
 
+function shouldSkipDomainScrape(company: CompanyRow): boolean {
+  return toBoolean(company.skip_domain_scrape) && Boolean(company.identified_domains);
+}
+
 function buildApifyInput(company: CompanyRow, limitPerSource: number): ApifyLinkedInPostInput {
   const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
   const input: ApifyLinkedInPostInput = {
@@ -289,13 +293,16 @@ async function main() {
   const csvText = await readFile(csvPath, "utf8");
   const companies = parseCompaniesCsv(csvText);
   const selectedCompanies = filterCompanies(companies, options.selectedCompanyName);
+  const skippedCompanies = selectedCompanies.filter(shouldSkipDomainScrape);
+  const companiesToScrape = selectedCompanies.filter((company) => !shouldSkipDomainScrape(company));
 
   console.log(`Loaded ${companies.length} companies from ${csvPath}`);
   console.log(`Selected ${selectedCompanies.length} companies for this run`);
+  console.log(`Skipped ${skippedCompanies.length} companies with existing domain data`);
   console.log(options.isLiveRun ? "Mode: live Apify run" : "Mode: dry run");
   console.log(`limitPerSource: ${options.limitPerSource}`);
 
-  const scrapePlans = selectedCompanies.map((company) =>
+  const scrapePlans = companiesToScrape.map((company) =>
     buildScrapePlan(company, options.limitPerSource),
   );
   const dryRunPath = path.resolve("data/cache/apify-dry-run-payloads.json");
@@ -306,7 +313,7 @@ async function main() {
     console.log(scrapePlan);
 
     if (options.isLiveRun) {
-      const company = selectedCompanies.find((row) => row.company_name === scrapePlan.companyName);
+      const company = companiesToScrape.find((row) => row.company_name === scrapePlan.companyName);
 
       if (!company) {
         throw new Error(`Could not find company row for ${scrapePlan.companyName}.`);

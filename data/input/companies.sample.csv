@@ -1,4 +1,3 @@
 company_name,linkedin_company_url,linkedin_search_url,identified_domains,email_domains,career_domains,job_board_domains,domain_confidence,skip_domain_scrape,last_scraped_at,status
-Example Company,https://www.linkedin.com/company/example-company/,,,,,,,false,,pending
+Example Company,https://www.linkedin.com/company/example-company/,,example.com,example.com,https://example.com/careers,,high,true,,done
 Another Startup,https://www.linkedin.com/company/another-startup/,,,,,,,false,,pending
-

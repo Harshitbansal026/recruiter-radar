@@ -54,7 +54,7 @@ Goal: Prove the data pipeline before building the full UI.
   - `rawData` disabled by default
 - [ ] Make scraping incremental using `last_scraped_at`.
 - [ ] Cache raw or normalized Apify results locally.
-- [ ] Avoid re-scraping companies with `skip_domain_scrape = true` when domain data is already strong.
+- [x] Avoid re-scraping companies with `skip_domain_scrape = true` when domain data is already strong.
 
 ## Phase 2: Domain and Email Extraction
 
@@ -260,3 +260,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `5bde83c` - Extract domains from cached posts.
 - `0d39f36` - Classify job board domains.
 - `665e10b` - Filter personal email domains from qualified contacts.
+- `593b70a` - Add scrape command help.
