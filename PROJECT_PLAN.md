@@ -259,3 +259,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `6ac6eb5` - Add cached post contact extraction.
 - `5bde83c` - Extract domains from cached posts.
 - `0d39f36` - Classify job board domains.
+- `665e10b` - Filter personal email domains from qualified contacts.

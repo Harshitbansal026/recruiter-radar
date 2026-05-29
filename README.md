@@ -36,6 +36,12 @@ Build dry-run Apify payloads for every company in the sample CSV:
 npm run scrape:linkedin:dry
 ```
 
+Show command help:
+
+```bash
+npm run scrape:linkedin:dry -- help
+```
+
 Build a dry-run payload for one company:
 
 ```bash

@@ -67,6 +67,23 @@ type RunOptions = {
 
 const DEFAULT_LIMIT_PER_SOURCE = 5;
 
+function printUsage() {
+  console.log(`
+RecruiterRadar LinkedIn scrape planner
+
+Commands:
+  npm run scrape:linkedin:dry
+  npm run scrape:linkedin:dry -- "Example Company"
+  npm run scrape:linkedin:dry -- "Example Company" 3
+  npm run scrape:linkedin:live -- "Example Company" 3
+
+Notes:
+  - Dry-run does not call Apify or spend credits.
+  - Live mode requires APIFY_TOKEN in a local .env file.
+  - The optional number controls limitPerSource.
+`.trim());
+}
+
 function parseCsvLine(line: string): string[] {
   return line.split(",").map((value) => value.trim());
 }
@@ -262,6 +279,11 @@ async function runApifyActor(company: CompanyRow, input: ApifyLinkedInPostInput)
 }
 
 async function main() {
+  if (process.argv.includes("--help") || process.argv.includes("help")) {
+    printUsage();
+    return;
+  }
+
   const options = getRunOptions();
   const csvPath = path.resolve("data/input/companies.sample.csv");
   const csvText = await readFile(csvPath, "utf8");
