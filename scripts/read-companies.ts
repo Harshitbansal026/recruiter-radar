@@ -48,6 +48,17 @@ type CompanyScrapePlan = {
   apifyInput: ApifyLinkedInPostInput;
 };
 
+type ApifyRunCache = {
+  companyName: string;
+  actorId: string;
+  runId: string;
+  datasetId: string;
+  itemCount: number;
+  input: ApifyLinkedInPostInput;
+  items: unknown[];
+  cachedAt: string;
+};
+
 function parseCsvLine(line: string): string[] {
   return line.split(",").map((value) => value.trim());
 }
@@ -91,6 +102,17 @@ function parseCompaniesCsv(csvText: string): CompanyRow[] {
 
 function toBoolean(value: string): boolean {
   return value.toLowerCase() === "true";
+}
+
+function toSlug(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+function createTimestamp(): string {
+  return new Date().toISOString().replace(/[:.]/g, "-");
 }
 
 function buildApifyInput(company: CompanyRow): ApifyLinkedInPostInput {
@@ -138,12 +160,29 @@ async function runApifyActor(company: CompanyRow, input: ApifyLinkedInPostInput)
   const client = new ApifyClient({ token });
   const run = await client.actor(actorId).call(input);
   const datasetItems = await client.dataset(run.defaultDatasetId).listItems();
+  const cacheData: ApifyRunCache = {
+    companyName: company.company_name,
+    actorId,
+    runId: run.id,
+    datasetId: run.defaultDatasetId,
+    itemCount: datasetItems.items.length,
+    input,
+    items: datasetItems.items,
+    cachedAt: new Date().toISOString(),
+  };
+  const cachePath = path.resolve(
+    "data/cache/apify-runs",
+    `${toSlug(company.company_name)}-${createTimestamp()}.json`,
+  );
+
+  await saveJson(cachePath, cacheData);
 
   return {
     actorId,
     runId: run.id,
     datasetId: run.defaultDatasetId,
     itemCount: datasetItems.items.length,
+    cachePath,
   };
 }
 

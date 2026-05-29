@@ -222,6 +222,7 @@ Goal: Make the project presentable for recruiters and interviews.
 
 - Apify actor usage may require paid credits.
 - Actor output shape may change.
+- Live Apify result caching is implemented in code but still needs verification with a real `APIFY_TOKEN` and one low-limit live run.
 - LinkedIn scraping has platform and compliance risk; use public data only and low volume.
 - Many posts will not contain emails.
 - Email verification cannot guarantee mailbox validity.
@@ -250,3 +251,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `ea811ec` - Use TypeScript for initial scripts.
 - `1880ec9` - Add TypeScript CSV company reader.
 - `c4cc141` - Add Apify dry run payload builder.
+- `a4942f1` - Save Apify dry run payload cache.
