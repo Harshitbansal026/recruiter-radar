@@ -76,9 +76,9 @@ Goal: Extract useful contact and domain intelligence from scraped post data.
 - [x] Produce `all_contacts.csv`.
 - [x] Produce `qualified_contacts.csv` using confidence thresholds.
 
-## Phase 3: Recruiter Discovery and Candidate Email Generation
+## Phase 3: Recruiter, Referral, and Hiring Contact Discovery
 
-Goal: Turn company/domain intelligence into recruiter-focused contact candidates.
+Goal: Turn company/domain intelligence into recruiter, referral, hiring-manager, founder, and relevant employee contact candidates.
 
 - [x] Detect hiring/recruiter context in post text using keyword signals:
   - recruiter
@@ -89,6 +89,12 @@ Goal: Turn company/domain intelligence into recruiter-focused contact candidates
   - send resume
   - referral
   - open roles
+- [x] Classify outreach context for direct emails:
+  - recruiter
+  - referral
+  - hiring manager
+  - hiring
+  - unknown
 - [ ] Extract recruiter/person names when available from post author fields, profile fields, or post text.
 - [ ] Extract recruiter/person roles or titles when available.
 - [ ] Link recruiter/person candidates to company domains and source evidence.
@@ -100,8 +106,8 @@ Goal: Turn company/domain intelligence into recruiter-focused contact candidates
   - `first_last@domain`
 - [ ] Mark generated emails as inferred, not directly verified.
 - [ ] Preserve source URLs and reasoning for every generated candidate email.
-- [ ] Add generated recruiter/person candidates to `all_contacts.csv`.
-- [ ] Add only high-confidence recruiter/person candidates to `qualified_contacts.csv`.
+- [ ] Add generated recruiter/referral/hiring contact candidates to `all_contacts.csv`.
+- [ ] Add only high-confidence recruiter/referral/hiring contact candidates to `qualified_contacts.csv`.
 
 ## Phase 4: Custom Email Confidence Service
 
@@ -271,7 +277,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - Email verification strategy: custom confidence service first, third-party APIs optional.
 - Export strategy: all contacts and qualified contacts.
 - Product positioning: recruiter discovery and outreach assistant, not a spam or bulk-scraping tool.
-- Recruiter/person discovery and generated candidate emails are a core project feature, not an optional add-on.
+- Recruiter/referral/hiring contact discovery and generated candidate emails are a core project feature, not an optional add-on.
 - Initial script language: TypeScript running on Node.js.
 - Decision update: The initial script language was changed from Python to TypeScript before Phase 1 so the scraper pipeline and future Next.js app use the same language.
 

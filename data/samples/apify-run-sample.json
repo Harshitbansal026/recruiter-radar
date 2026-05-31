@@ -22,6 +22,10 @@
     {
       "url": "https://www.linkedin.com/posts/example-company_unofficial-referral-activity-3",
       "text": "Sharing this hiring post from a friend. You can also reach me at example.referral@gmail.com."
+    },
+    {
+      "url": "https://www.linkedin.com/posts/example-company_engineering-manager-activity-4",
+      "text": "Our engineering manager is reviewing frontend referrals. Relevant profiles can be sent to frontend-team@example.com."
     }
   ],
   "cachedAt": "2026-05-29T00:00:00.000Z"

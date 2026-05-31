@@ -18,8 +18,9 @@ type ExtractedContact = {
   emailDomain: string;
   sourceUrl: string;
   sourceText: string;
+  contactContext: "recruiter" | "referral" | "hiring_manager" | "hiring" | "unknown";
   isHiringContext: string;
-  matchedHiringKeywords: string;
+  matchedContextKeywords: string;
   confidence: "high" | "medium" | "low";
   reason: string;
 };
@@ -51,17 +52,12 @@ const PERSONAL_EMAIL_DOMAINS = [
   "proton.me",
   "protonmail.com",
 ];
-const HIRING_KEYWORDS = [
-  "recruiter",
-  "talent acquisition",
-  "hr",
-  "hiring",
-  "we are hiring",
-  "send resume",
-  "referral",
-  "open roles",
-  "apply",
-];
+const CONTEXT_KEYWORDS = {
+  recruiter: ["recruiter", "talent acquisition", "hr", "people team"],
+  referral: ["referral", "refer", "employee referral"],
+  hiring_manager: ["hiring manager", "engineering manager", "tech lead", "founder"],
+  hiring: ["hiring", "we are hiring", "send resume", "open roles", "apply"],
+} as const;
 
 function getStringValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -87,33 +83,60 @@ function isPersonalEmailDomain(domain: string): boolean {
   return PERSONAL_EMAIL_DOMAINS.includes(domain);
 }
 
-function getMatchedHiringKeywords(text: string): string[] {
+function getMatchedContextKeywords(text: string): string[] {
+  const normalizedText = text.toLowerCase();
+  const allKeywords = Object.values(CONTEXT_KEYWORDS).flat();
+
+  return allKeywords.filter((keyword) => normalizedText.includes(keyword));
+}
+
+function getContactContext(text: string): ExtractedContact["contactContext"] {
   const normalizedText = text.toLowerCase();
 
-  return HIRING_KEYWORDS.filter((keyword) => normalizedText.includes(keyword));
+  if (CONTEXT_KEYWORDS.recruiter.some((keyword) => normalizedText.includes(keyword))) {
+    return "recruiter";
+  }
+
+  if (CONTEXT_KEYWORDS.hiring_manager.some((keyword) => normalizedText.includes(keyword))) {
+    return "hiring_manager";
+  }
+
+  if (CONTEXT_KEYWORDS.referral.some((keyword) => normalizedText.includes(keyword))) {
+    return "referral";
+  }
+
+  if (CONTEXT_KEYWORDS.hiring.some((keyword) => normalizedText.includes(keyword))) {
+    return "hiring";
+  }
+
+  return "unknown";
 }
 
 function getContactConfidence(
   isPersonalDomain: boolean,
-  matchedHiringKeywords: string[],
+  matchedContextKeywords: string[],
 ): ExtractedContact["confidence"] {
   if (isPersonalDomain) {
     return "low";
   }
 
-  return matchedHiringKeywords.length > 0 ? "high" : "medium";
+  return matchedContextKeywords.length > 0 ? "high" : "medium";
 }
 
-function getContactReason(isPersonalDomain: boolean, matchedHiringKeywords: string[]): string {
+function getContactReason(
+  isPersonalDomain: boolean,
+  contactContext: ExtractedContact["contactContext"],
+  matchedContextKeywords: string[],
+): string {
   if (isPersonalDomain) {
     return "Email was found in post text but uses a personal email domain.";
   }
 
-  if (matchedHiringKeywords.length > 0) {
-    return `Email was found directly in post text with hiring context: ${matchedHiringKeywords.join(", ")}.`;
+  if (matchedContextKeywords.length > 0) {
+    return `Email was found directly in post text with ${contactContext} context: ${matchedContextKeywords.join(", ")}.`;
   }
 
-  return "Email was found directly in post text, but hiring/recruiter context was not detected.";
+  return "Email was found directly in post text, but recruiter/referral/hiring context was not detected.";
 }
 
 function getDomainFromUrl(url: string): string {
@@ -153,8 +176,9 @@ function contactsToCsv(contacts: ExtractedContact[]): string {
     "emailDomain",
     "sourceUrl",
     "sourceText",
+    "contactContext",
     "isHiringContext",
-    "matchedHiringKeywords",
+    "matchedContextKeywords",
     "confidence",
     "reason",
   ]);
@@ -183,12 +207,13 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
     const sourceUrl = getStringValue(itemRecord, ["url", "postUrl", "link"]);
     const sourceText = getStringValue(itemRecord, ["text", "content", "description"]);
     const emails = getUniqueMatches(sourceText, EMAIL_PATTERN);
-    const matchedHiringKeywords = getMatchedHiringKeywords(sourceText);
+    const contactContext = getContactContext(sourceText);
+    const matchedContextKeywords = getMatchedContextKeywords(sourceText);
 
     for (const email of emails) {
       const emailDomain = getDomainFromEmail(email);
       const isPersonalDomain = isPersonalEmailDomain(emailDomain);
-      const confidence = getContactConfidence(isPersonalDomain, matchedHiringKeywords);
+      const confidence = getContactConfidence(isPersonalDomain, matchedContextKeywords);
 
       contacts.push({
         companyName: cachedRun.companyName,
@@ -196,10 +221,11 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
         emailDomain,
         sourceUrl,
         sourceText,
-        isHiringContext: String(matchedHiringKeywords.length > 0),
-        matchedHiringKeywords: matchedHiringKeywords.join(";"),
+        contactContext,
+        isHiringContext: String(contactContext !== "unknown"),
+        matchedContextKeywords: matchedContextKeywords.join(";"),
         confidence,
-        reason: getContactReason(isPersonalDomain, matchedHiringKeywords),
+        reason: getContactReason(isPersonalDomain, contactContext, matchedContextKeywords),
       });
     }
   }
