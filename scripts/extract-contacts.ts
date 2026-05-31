@@ -18,6 +18,8 @@ type ExtractedContact = {
   emailDomain: string;
   sourceUrl: string;
   sourceText: string;
+  isHiringContext: string;
+  matchedHiringKeywords: string;
   confidence: "high" | "medium" | "low";
   reason: string;
 };
@@ -49,6 +51,17 @@ const PERSONAL_EMAIL_DOMAINS = [
   "proton.me",
   "protonmail.com",
 ];
+const HIRING_KEYWORDS = [
+  "recruiter",
+  "talent acquisition",
+  "hr",
+  "hiring",
+  "we are hiring",
+  "send resume",
+  "referral",
+  "open roles",
+  "apply",
+];
 
 function getStringValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -72,6 +85,35 @@ function getDomainFromEmail(email: string): string {
 
 function isPersonalEmailDomain(domain: string): boolean {
   return PERSONAL_EMAIL_DOMAINS.includes(domain);
+}
+
+function getMatchedHiringKeywords(text: string): string[] {
+  const normalizedText = text.toLowerCase();
+
+  return HIRING_KEYWORDS.filter((keyword) => normalizedText.includes(keyword));
+}
+
+function getContactConfidence(
+  isPersonalDomain: boolean,
+  matchedHiringKeywords: string[],
+): ExtractedContact["confidence"] {
+  if (isPersonalDomain) {
+    return "low";
+  }
+
+  return matchedHiringKeywords.length > 0 ? "high" : "medium";
+}
+
+function getContactReason(isPersonalDomain: boolean, matchedHiringKeywords: string[]): string {
+  if (isPersonalDomain) {
+    return "Email was found in post text but uses a personal email domain.";
+  }
+
+  if (matchedHiringKeywords.length > 0) {
+    return `Email was found directly in post text with hiring context: ${matchedHiringKeywords.join(", ")}.`;
+  }
+
+  return "Email was found directly in post text, but hiring/recruiter context was not detected.";
 }
 
 function getDomainFromUrl(url: string): string {
@@ -111,6 +153,8 @@ function contactsToCsv(contacts: ExtractedContact[]): string {
     "emailDomain",
     "sourceUrl",
     "sourceText",
+    "isHiringContext",
+    "matchedHiringKeywords",
     "confidence",
     "reason",
   ]);
@@ -139,10 +183,12 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
     const sourceUrl = getStringValue(itemRecord, ["url", "postUrl", "link"]);
     const sourceText = getStringValue(itemRecord, ["text", "content", "description"]);
     const emails = getUniqueMatches(sourceText, EMAIL_PATTERN);
+    const matchedHiringKeywords = getMatchedHiringKeywords(sourceText);
 
     for (const email of emails) {
       const emailDomain = getDomainFromEmail(email);
       const isPersonalDomain = isPersonalEmailDomain(emailDomain);
+      const confidence = getContactConfidence(isPersonalDomain, matchedHiringKeywords);
 
       contacts.push({
         companyName: cachedRun.companyName,
@@ -150,10 +196,10 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
         emailDomain,
         sourceUrl,
         sourceText,
-        confidence: isPersonalDomain ? "low" : "high",
-        reason: isPersonalDomain
-          ? "Email was found in post text but uses a personal email domain."
-          : "Email was found directly in scraped post text.",
+        isHiringContext: String(matchedHiringKeywords.length > 0),
+        matchedHiringKeywords: matchedHiringKeywords.join(";"),
+        confidence,
+        reason: getContactReason(isPersonalDomain, matchedHiringKeywords),
       });
     }
   }

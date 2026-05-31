@@ -80,7 +80,7 @@ Goal: Extract useful contact and domain intelligence from scraped post data.
 
 Goal: Turn company/domain intelligence into recruiter-focused contact candidates.
 
-- [ ] Detect hiring/recruiter context in post text using keyword signals:
+- [x] Detect hiring/recruiter context in post text using keyword signals:
   - recruiter
   - talent acquisition
   - HR
@@ -293,3 +293,5 @@ Goal: Make the project presentable for recruiters and interviews.
 - `665e10b` - Filter personal email domains from qualified contacts.
 - `593b70a` - Add scrape command help.
 - `b83b500` - Skip companies with known domains.
+- `7ec6932` - Demonstrate incremental scrape boundary.
+- `f9a68ea` - Add recruiter email generation phase.
