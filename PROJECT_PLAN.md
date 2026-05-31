@@ -76,7 +76,34 @@ Goal: Extract useful contact and domain intelligence from scraped post data.
 - [x] Produce `all_contacts.csv`.
 - [x] Produce `qualified_contacts.csv` using confidence thresholds.
 
-## Phase 3: Custom Email Confidence Service
+## Phase 3: Recruiter Discovery and Candidate Email Generation
+
+Goal: Turn company/domain intelligence into recruiter-focused contact candidates.
+
+- [ ] Detect hiring/recruiter context in post text using keyword signals:
+  - recruiter
+  - talent acquisition
+  - HR
+  - hiring
+  - we are hiring
+  - send resume
+  - referral
+  - open roles
+- [ ] Extract recruiter/person names when available from post author fields, profile fields, or post text.
+- [ ] Extract recruiter/person roles or titles when available.
+- [ ] Link recruiter/person candidates to company domains and source evidence.
+- [ ] Generate candidate email patterns from recruiter/person names and verified company email domains:
+  - `first.last@domain`
+  - `first@domain`
+  - `firstlast@domain`
+  - `first_initial_last@domain`
+  - `first_last@domain`
+- [ ] Mark generated emails as inferred, not directly verified.
+- [ ] Preserve source URLs and reasoning for every generated candidate email.
+- [ ] Add generated recruiter/person candidates to `all_contacts.csv`.
+- [ ] Add only high-confidence recruiter/person candidates to `qualified_contacts.csv`.
+
+## Phase 4: Custom Email Confidence Service
 
 Goal: Build our own email confidence layer without depending on third-party verification APIs.
 
@@ -109,7 +136,7 @@ Cost notes:
 - Possible infrastructure cost: a small VPS may be needed if hosting providers block outbound SMTP, usually around USD 4-6/month.
 - Third-party verification APIs are optional fallback only, not part of the core plan.
 
-## Phase 4: Next.js Dashboard
+## Phase 5: Next.js Dashboard
 
 Goal: Turn the pipeline into a usable product interface.
 
@@ -127,7 +154,7 @@ Goal: Turn the pipeline into a usable product interface.
   - export qualified contacts
   - export selected contacts
 
-## Phase 5: PostgreSQL Persistence
+## Phase 6: PostgreSQL Persistence
 
 Goal: Replace CSV-only state with a real database.
 
@@ -146,13 +173,15 @@ Goal: Replace CSV-only state with a real database.
 - [ ] Store source evidence for every contact/domain.
 - [ ] Keep CSV import/export support.
 
-## Phase 6: AI Extraction and Scoring
+## Phase 7: AI Extraction and Scoring
 
 Goal: Use an LLM carefully for structured extraction and summaries.
 
 - [ ] Add Gemini API first because of free-tier availability.
 - [ ] Keep OpenAI optional.
 - [ ] Extract recruiter/hiring context from post text.
+- [ ] Improve recruiter/person extraction from messy post text and actor output.
+- [ ] Improve candidate email pattern selection using confirmed company email patterns.
 - [ ] Use schema-validated structured JSON output.
 - [ ] Reject extracted contacts without source evidence.
 - [ ] Add confidence reasoning:
@@ -163,7 +192,7 @@ Goal: Use an LLM carefully for structured extraction and summaries.
   - public email found
 - [ ] Add safeguards against hallucinated contacts.
 
-## Phase 7: Cold Email Drafting
+## Phase 8: Cold Email Drafting
 
 Goal: Generate useful outreach drafts without sending automatically at first.
 
@@ -178,7 +207,7 @@ Goal: Generate useful outreach drafts without sending automatically at first.
 - [ ] Add opt-out line support.
 - [ ] Store generated drafts.
 
-## Phase 8: Email Sending
+## Phase 9: Email Sending
 
 Goal: Send reviewed outreach emails safely.
 
@@ -198,7 +227,7 @@ Goal: Send reviewed outreach emails safely.
   - no bulk auto-send by default
   - only send to qualified contacts unless overridden
 
-## Phase 9: Deployment and Resume Polish
+## Phase 10: Deployment and Resume Polish
 
 Goal: Make the project presentable for recruiters and interviews.
 
@@ -229,6 +258,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - SMTP checks may be blocked by mail servers or hosting providers.
 - Serverless platforms may block outbound SMTP.
 - Firecrawl remains optional fallback for domain discovery, not the first source.
+- Recruiter/person email generation must be clearly labeled as inferred unless directly found in source text.
 - LLMs can hallucinate unless source-backed extraction is enforced.
 - Cold email sending can affect sender reputation if used aggressively.
 
@@ -241,6 +271,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - Email verification strategy: custom confidence service first, third-party APIs optional.
 - Export strategy: all contacts and qualified contacts.
 - Product positioning: recruiter discovery and outreach assistant, not a spam or bulk-scraping tool.
+- Recruiter/person discovery and generated candidate emails are a core project feature, not an optional add-on.
 - Initial script language: TypeScript running on Node.js.
 - Decision update: The initial script language was changed from Python to TypeScript before Phase 1 so the scraper pipeline and future Next.js app use the same language.
 
