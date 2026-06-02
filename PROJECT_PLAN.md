@@ -46,6 +46,13 @@ Goal: Prove the data pipeline before building the full UI.
   - `skip_domain_scrape`
   - `last_scraped_at`
   - `status`
+- [ ] Support company identity fields:
+  - `company_aliases`
+  - `official_domains`
+  - `old_domains`
+  - `email_domains`
+  - `career_domains`
+  - `job_board_slugs`
 - [ ] Integrate Apify actor `supreme_coder/linkedin-post`.
 - [x] Use tight scrape parameters:
   - low `limitPerSource`
@@ -58,7 +65,7 @@ Goal: Prove the data pipeline before building the full UI.
 
 ## Phase 2: Domain and Email Extraction
 
-Goal: Extract useful contact and domain intelligence from scraped post data.
+Goal: Extract only high-trust company-related contact and domain intelligence from scraped post data.
 
 - [x] Extract visible emails from post text.
 - [x] Extract domains from emails.
@@ -71,33 +78,40 @@ Goal: Extract useful contact and domain intelligence from scraped post data.
   - unrelated domain
 - [x] Identify and ignore non-company email domains where appropriate.
 - [x] Track source post URL and source text snippet.
+- [ ] Build a company identity graph from company names, aliases, official domains, old domains, email domains, career domains, job-board slugs, and source evidence.
+- [ ] Process only high-trust company-related posts/pages:
+  - official company page
+  - author clearly works at target company
+  - email/domain matches company identity
+  - official company/career domain appears
+- [ ] Ignore external agencies, staffing agents, random hiring posters, personal email domains, and posts with only company-name mentions but no company proof.
+- [ ] Exclude personal/free email domains from all contact CSV outputs.
+- [ ] Exclude job-board, LinkedIn, URL shortener, and unrelated external domains from candidate email domains.
 - [ ] Add domain confidence scoring.
 - [ ] Update company CSV with identified domains.
 - [x] Produce `all_contacts.csv`.
 - [x] Produce `qualified_contacts.csv` using confidence thresholds.
 
-## Phase 3: Recruiter, Referral, and Hiring Contact Discovery
+## Phase 3: Company-Affiliated Contact Discovery and Email Generation
 
-Goal: Turn company/domain intelligence into recruiter, referral, hiring-manager, founder, and relevant employee contact candidates.
+Goal: Turn company identity and domain intelligence into clean, company-affiliated contact candidates and work-email candidates.
 
-- [x] Detect hiring/recruiter context in post text using keyword signals:
-  - recruiter
-  - talent acquisition
-  - HR
-  - hiring
-  - we are hiring
-  - send resume
-  - referral
-  - open roles
-- [x] Classify outreach context for direct emails:
-  - recruiter
-  - referral
-  - hiring manager
-  - hiring
-  - unknown
+- [ ] Remove keyword-based outreach-context fields from main CSV outputs:
+  - `contactContext`
+  - `isHiringContext`
+  - `matchedContextKeywords`
+- [ ] Decide whether a person/contact belongs to the target company using company identity, author fields, profile fields, source URL, and source domains.
 - [x] Extract recruiter/person names when available from post author fields, profile fields, or post text.
 - [x] Extract recruiter/person roles or titles when available.
 - [x] Link recruiter/person candidates to company domains and source evidence.
+- [ ] Keep company-affiliated people even when their visible email is personal, but do not keep the personal email as an outreach email.
+- [ ] Infer company email patterns from directly found company emails:
+  - `first.last@domain`
+  - `first@domain`
+  - `firstlast@domain`
+  - `first_initial_last@domain`
+  - `first_last@domain`
+- [ ] Prioritize inferred company email patterns before fallback patterns when generating emails for other company-affiliated people.
 - [x] Generate candidate email patterns from recruiter/person names and verified company email domains:
   - `first.last@domain`
   - `first@domain`
@@ -106,8 +120,8 @@ Goal: Turn company/domain intelligence into recruiter, referral, hiring-manager,
   - `first_last@domain`
 - [x] Mark generated emails as inferred, not directly verified.
 - [x] Preserve source URLs and reasoning for every generated candidate email.
-- [x] Add generated recruiter/referral/hiring contact candidates to `all_contacts.csv`.
-- [ ] Add only high-confidence recruiter/referral/hiring contact candidates to `qualified_contacts.csv`.
+- [x] Add generated company-affiliated contact candidates to `all_contacts.csv`.
+- [ ] Add only high-confidence company-affiliated contact candidates to `qualified_contacts.csv`.
 
 ## Phase 4: Custom Email Confidence Service
 
@@ -260,11 +274,15 @@ Goal: Make the project presentable for recruiters and interviews.
 - Live Apify result caching is implemented in code but still needs verification with a real `APIFY_TOKEN` and one low-limit live run.
 - LinkedIn scraping has platform and compliance risk; use public data only and low volume.
 - Many posts will not contain emails.
+- Strict company-trust filtering may reduce contact volume but should improve output quality.
+- Company identity matching can fail for acquisitions, rebrands, abbreviations, and unusual domains unless aliases/domains are maintained.
 - Email verification cannot guarantee mailbox validity.
 - SMTP checks may be blocked by mail servers or hosting providers.
 - Serverless platforms may block outbound SMTP.
 - Firecrawl remains optional fallback for domain discovery, not the first source.
 - Recruiter/person email generation must be clearly labeled as inferred unless directly found in source text.
+- Personal emails should not be exported as outreach emails; company-affiliated people with personal emails can still be used for company-domain candidate email generation.
+- Job-board domains are source evidence only and must not be used as candidate email domains.
 - LLMs can hallucinate unless source-backed extraction is enforced.
 - Cold email sending can affect sender reputation if used aggressively.
 
@@ -277,7 +295,8 @@ Goal: Make the project presentable for recruiters and interviews.
 - Email verification strategy: custom confidence service first, third-party APIs optional.
 - Export strategy: all contacts and qualified contacts.
 - Product positioning: recruiter discovery and outreach assistant, not a spam or bulk-scraping tool.
-- Recruiter/referral/hiring contact discovery and generated candidate emails are a core project feature, not an optional add-on.
+- Company identity graph, high-trust source filtering, and company-affiliated generated candidate emails are core project features, not optional add-ons.
+- Main CSV outputs should stay clean and exclude agency/external/personal-email noise.
 - Initial script language: TypeScript running on Node.js.
 - Decision update: The initial script language was changed from Python to TypeScript before Phase 1 so the scraper pipeline and future Next.js app use the same language.
 
