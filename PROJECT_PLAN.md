@@ -95,9 +95,9 @@ Goal: Turn company/domain intelligence into recruiter, referral, hiring-manager,
   - hiring manager
   - hiring
   - unknown
-- [ ] Extract recruiter/person names when available from post author fields, profile fields, or post text.
-- [ ] Extract recruiter/person roles or titles when available.
-- [ ] Link recruiter/person candidates to company domains and source evidence.
+- [x] Extract recruiter/person names when available from post author fields, profile fields, or post text.
+- [x] Extract recruiter/person roles or titles when available.
+- [x] Link recruiter/person candidates to company domains and source evidence.
 - [ ] Generate candidate email patterns from recruiter/person names and verified company email domains:
   - `first.last@domain`
   - `first@domain`
@@ -301,3 +301,5 @@ Goal: Make the project presentable for recruiters and interviews.
 - `b83b500` - Skip companies with known domains.
 - `7ec6932` - Demonstrate incremental scrape boundary.
 - `f9a68ea` - Add recruiter email generation phase.
+- `9a0641c` - Detect hiring context for extracted emails.
+- `a34e1de` - Classify outreach context for contacts.

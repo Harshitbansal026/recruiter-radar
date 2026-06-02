@@ -14,6 +14,9 @@ type CachedApifyRun = {
 
 type ExtractedContact = {
   companyName: string;
+  personName: string;
+  personRole: string;
+  personProfileUrl: string;
   email: string;
   emailDomain: string;
   sourceUrl: string;
@@ -172,6 +175,9 @@ function recordsToCsv<T extends Record<string, string>>(records: T[], headers: A
 function contactsToCsv(contacts: ExtractedContact[]): string {
   return recordsToCsv(contacts, [
     "companyName",
+    "personName",
+    "personRole",
+    "personProfileUrl",
     "email",
     "emailDomain",
     "sourceUrl",
@@ -206,6 +212,14 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
     const itemRecord = item as Record<string, unknown>;
     const sourceUrl = getStringValue(itemRecord, ["url", "postUrl", "link"]);
     const sourceText = getStringValue(itemRecord, ["text", "content", "description"]);
+    const personName = getStringValue(itemRecord, ["authorName", "author", "name", "profileName"]);
+    const personRole = getStringValue(itemRecord, ["authorTitle", "title", "headline", "profileHeadline"]);
+    const personProfileUrl = getStringValue(itemRecord, [
+      "authorProfileUrl",
+      "profileUrl",
+      "authorUrl",
+      "profileLink",
+    ]);
     const emails = getUniqueMatches(sourceText, EMAIL_PATTERN);
     const contactContext = getContactContext(sourceText);
     const matchedContextKeywords = getMatchedContextKeywords(sourceText);
@@ -217,6 +231,9 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
 
       contacts.push({
         companyName: cachedRun.companyName,
+        personName,
+        personRole,
+        personProfileUrl,
         email: email.toLowerCase(),
         emailDomain,
         sourceUrl,

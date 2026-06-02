@@ -13,18 +13,29 @@
   "items": [
     {
       "url": "https://www.linkedin.com/posts/example-company_hiring-frontend-activity-1",
+      "authorName": "Ananya Mehta",
+      "authorTitle": "Talent Acquisition Specialist at Example Company",
+      "authorProfileUrl": "https://www.linkedin.com/in/ananya-mehta/",
       "text": "We are hiring frontend engineers. Send your resume to careers@example.com or apply at https://example.com/careers."
     },
     {
       "url": "https://www.linkedin.com/posts/example-company_talent-acquisition-activity-2",
+      "authorName": "Example Company",
+      "authorTitle": "Company Page",
       "text": "Our talent acquisition team is reviewing referrals this week. Contact recruiting@example.com for relevant roles. Apply at https://jobs.lever.co/example-company/frontend-engineer."
     },
     {
       "url": "https://www.linkedin.com/posts/example-company_unofficial-referral-activity-3",
+      "authorName": "Rohan Shah",
+      "authorTitle": "Frontend Engineer at Example Company",
+      "authorProfileUrl": "https://www.linkedin.com/in/rohan-shah/",
       "text": "Sharing this hiring post from a friend. You can also reach me at example.referral@gmail.com."
     },
     {
       "url": "https://www.linkedin.com/posts/example-company_engineering-manager-activity-4",
+      "authorName": "Priya Nair",
+      "authorTitle": "Engineering Manager at Example Company",
+      "authorProfileUrl": "https://www.linkedin.com/in/priya-nair/",
       "text": "Our engineering manager is reviewing frontend referrals. Relevant profiles can be sent to frontend-team@example.com."
     }
   ],
