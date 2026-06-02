@@ -92,7 +92,25 @@ Goal: Extract only high-trust company-related contact and domain intelligence fr
 - [x] Produce `all_contacts.csv`.
 - [x] Produce `qualified_contacts.csv` using confidence thresholds.
 
-## Phase 3: Company-Affiliated Contact Discovery and Email Generation
+## Phase 3: Firecrawl Company Identity Enrichment
+
+Goal: Use Firecrawl as a fallback/enrichment source to discover official company identity when Apify/LinkedIn data is incomplete.
+
+- [ ] Use Firecrawl only when company identity is missing or low confidence.
+- [ ] Scrape/search official company websites, careers pages, contact pages, about/team pages, and blog/author pages.
+- [ ] Discover and classify:
+  - official domains
+  - old/rebranded domains
+  - email domains
+  - career domains
+  - job-board links/slugs
+  - company aliases
+- [ ] Exclude job-board, URL shortener, personal email, and unrelated external domains from candidate email domains.
+- [ ] Cache Firecrawl responses locally.
+- [ ] Add Firecrawl result source URLs and confidence reasons to the company identity graph.
+- [ ] Keep Firecrawl calls low-volume and targeted to control credit usage.
+
+## Phase 4: Company-Affiliated Contact Discovery and Email Generation
 
 Goal: Turn company identity and domain intelligence into clean, company-affiliated contact candidates and work-email candidates.
 
@@ -123,7 +141,7 @@ Goal: Turn company identity and domain intelligence into clean, company-affiliat
 - [x] Add generated company-affiliated contact candidates to `all_contacts.csv`.
 - [ ] Add only high-confidence company-affiliated contact candidates to `qualified_contacts.csv`.
 
-## Phase 4: Custom Email Confidence Service
+## Phase 5: Custom Email Confidence Service
 
 Goal: Build our own email confidence layer without depending on third-party verification APIs.
 
@@ -156,7 +174,7 @@ Cost notes:
 - Possible infrastructure cost: a small VPS may be needed if hosting providers block outbound SMTP, usually around USD 4-6/month.
 - Third-party verification APIs are optional fallback only, not part of the core plan.
 
-## Phase 5: Next.js Dashboard
+## Phase 6: Next.js Dashboard
 
 Goal: Turn the pipeline into a usable product interface.
 
@@ -174,7 +192,7 @@ Goal: Turn the pipeline into a usable product interface.
   - export qualified contacts
   - export selected contacts
 
-## Phase 6: PostgreSQL Persistence
+## Phase 7: PostgreSQL Persistence
 
 Goal: Replace CSV-only state with a real database.
 
@@ -193,7 +211,7 @@ Goal: Replace CSV-only state with a real database.
 - [ ] Store source evidence for every contact/domain.
 - [ ] Keep CSV import/export support.
 
-## Phase 7: AI Extraction and Scoring
+## Phase 8: AI Extraction and Scoring
 
 Goal: Use an LLM carefully for structured extraction and summaries.
 
@@ -212,7 +230,7 @@ Goal: Use an LLM carefully for structured extraction and summaries.
   - public email found
 - [ ] Add safeguards against hallucinated contacts.
 
-## Phase 8: Cold Email Drafting
+## Phase 9: Cold Email Drafting
 
 Goal: Generate useful outreach drafts without sending automatically at first.
 
@@ -227,7 +245,7 @@ Goal: Generate useful outreach drafts without sending automatically at first.
 - [ ] Add opt-out line support.
 - [ ] Store generated drafts.
 
-## Phase 9: Email Sending
+## Phase 10: Email Sending
 
 Goal: Send reviewed outreach emails safely.
 
@@ -247,7 +265,7 @@ Goal: Send reviewed outreach emails safely.
   - no bulk auto-send by default
   - only send to qualified contacts unless overridden
 
-## Phase 10: Deployment and Resume Polish
+## Phase 11: Deployment and Resume Polish
 
 Goal: Make the project presentable for recruiters and interviews.
 
@@ -270,6 +288,9 @@ Goal: Make the project presentable for recruiters and interviews.
 ## Known Risks and Constraints
 
 - Apify actor usage may require paid credits.
+- Apify Free plan currently includes $5 monthly platform usage credits; the LinkedIn post actor is pay-per-event and listed as "$1 per 1k" on its Apify page.
+- Firecrawl Free plan currently includes 1,000 credits/month; scrape/crawl/map cost 1 credit per page and search costs 2 credits per 10 results.
+- Firecrawl has no pure pay-per-use monthly plan; upgrade tiers are monthly subscriptions, so the project should use Firecrawl only as targeted fallback/enrichment.
 - Actor output shape may change.
 - Live Apify result caching is implemented in code but still needs verification with a real `APIFY_TOKEN` and one low-limit live run.
 - LinkedIn scraping has platform and compliance risk; use public data only and low volume.
@@ -280,6 +301,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - SMTP checks may be blocked by mail servers or hosting providers.
 - Serverless platforms may block outbound SMTP.
 - Firecrawl remains optional fallback for domain discovery, not the first source.
+- Firecrawl should enrich company identity, not replace Apify's LinkedIn hiring/post signal pipeline.
 - Recruiter/person email generation must be clearly labeled as inferred unless directly found in source text.
 - Personal emails should not be exported as outreach emails; company-affiliated people with personal emails can still be used for company-domain candidate email generation.
 - Job-board domains are source evidence only and must not be used as candidate email domains.
