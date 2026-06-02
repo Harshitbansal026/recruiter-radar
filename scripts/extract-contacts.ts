@@ -19,6 +19,7 @@ type ExtractedContact = {
   personProfileUrl: string;
   email: string;
   emailDomain: string;
+  emailSource: "direct_found" | "generated_inferred";
   sourceUrl: string;
   sourceText: string;
   contactContext: "recruiter" | "referral" | "hiring_manager" | "hiring" | "unknown";
@@ -180,6 +181,7 @@ function contactsToCsv(contacts: ExtractedContact[]): string {
     "personProfileUrl",
     "email",
     "emailDomain",
+    "emailSource",
     "sourceUrl",
     "sourceText",
     "contactContext",
@@ -188,6 +190,38 @@ function contactsToCsv(contacts: ExtractedContact[]): string {
     "confidence",
     "reason",
   ]);
+}
+
+function isLikelyPersonName(name: string, companyName: string): boolean {
+  return Boolean(name) && name.toLowerCase() !== companyName.toLowerCase() && name.trim().includes(" ");
+}
+
+function normalizeNameParts(name: string): string[] {
+  return name
+    .toLowerCase()
+    .replace(/[^a-z\s-]/g, "")
+    .split(/[\s-]+/)
+    .filter(Boolean);
+}
+
+function generateEmailPatterns(personName: string, domain: string): string[] {
+  const nameParts = normalizeNameParts(personName);
+  const firstName = nameParts[0];
+  const lastName = nameParts[nameParts.length - 1];
+
+  if (!firstName || !lastName) {
+    return [];
+  }
+
+  const candidates = [
+    `${firstName}.${lastName}@${domain}`,
+    `${firstName}@${domain}`,
+    `${firstName}${lastName}@${domain}`,
+    `${firstName[0]}${lastName}@${domain}`,
+    `${firstName}_${lastName}@${domain}`,
+  ];
+
+  return Array.from(new Set(candidates));
 }
 
 function domainsToCsv(domains: ExtractedDomain[]): string {
@@ -236,6 +270,7 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
         personProfileUrl,
         email: email.toLowerCase(),
         emailDomain,
+        emailSource: "direct_found",
         sourceUrl,
         sourceText,
         contactContext,
@@ -248,6 +283,53 @@ function extractContactsFromRun(cachedRun: CachedApifyRun): ExtractedContact[] {
   }
 
   return contacts;
+}
+
+function getCandidateEmailDomains(domains: ExtractedDomain[]): string[] {
+  return Array.from(
+    new Set(
+      domains
+        .filter((domain) => domain.domainType === "email_domain" || domain.domainType === "career_domain")
+        .map((domain) => domain.domain)
+        .filter((domain) => domain && !isPersonalEmailDomain(domain)),
+    ),
+  );
+}
+
+function generateInferredContacts(
+  directContacts: ExtractedContact[],
+  domains: ExtractedDomain[],
+): ExtractedContact[] {
+  const candidateEmailDomains = getCandidateEmailDomains(domains);
+  const inferredContacts: ExtractedContact[] = [];
+  const existingEmails = new Set(directContacts.map((contact) => contact.email));
+
+  for (const contact of directContacts) {
+    if (!isLikelyPersonName(contact.personName, contact.companyName)) {
+      continue;
+    }
+
+    for (const domain of candidateEmailDomains) {
+      for (const generatedEmail of generateEmailPatterns(contact.personName, domain)) {
+        if (existingEmails.has(generatedEmail)) {
+          continue;
+        }
+
+        existingEmails.add(generatedEmail);
+        inferredContacts.push({
+          ...contact,
+          email: generatedEmail,
+          emailDomain: domain,
+          emailSource: "generated_inferred",
+          confidence: "medium",
+          reason:
+            "Email was generated from person name and candidate company email domain; it is inferred and not directly verified.",
+        });
+      }
+    }
+  }
+
+  return inferredContacts;
 }
 
 function extractDomainsFromRun(cachedRun: CachedApifyRun): ExtractedDomain[] {
@@ -316,25 +398,32 @@ async function main() {
   const allContactsPath = path.resolve("data/output/all_contacts.csv");
   const qualifiedContactsPath = path.resolve("data/output/qualified_contacts.csv");
   const companyDomainsPath = path.resolve("data/output/company_domains.csv");
+  const generatedContactsPath = path.resolve("data/output/generated_contacts.csv");
   const cachedRunText = await readFile(inputPath, "utf8");
   const cachedRun = JSON.parse(cachedRunText) as CachedApifyRun;
-  const contacts = extractContactsFromRun(cachedRun);
+  const directContacts = extractContactsFromRun(cachedRun);
   const domains = extractDomainsFromRun(cachedRun);
+  const generatedContacts = generateInferredContacts(directContacts, domains);
+  const contacts = [...directContacts, ...generatedContacts];
   const qualifiedContacts = contacts.filter((contact) => contact.confidence === "high");
   const allContactsCsv = contactsToCsv(contacts);
   const qualifiedContactsCsv = contactsToCsv(qualifiedContacts);
+  const generatedContactsCsv = contactsToCsv(generatedContacts);
   const companyDomainsCsv = domainsToCsv(domains);
 
   await saveText(allContactsPath, allContactsCsv);
   await saveText(qualifiedContactsPath, qualifiedContactsCsv);
+  await saveText(generatedContactsPath, generatedContactsCsv);
   await saveText(companyDomainsPath, companyDomainsCsv);
 
   console.log(`Read cached Apify run from ${inputPath}`);
-  console.log(`Extracted ${contacts.length} contacts`);
+  console.log(`Extracted ${directContacts.length} direct contacts`);
+  console.log(`Generated ${generatedContacts.length} inferred contacts`);
   console.log(`Extracted ${domains.length} domains`);
   console.log(`Qualified ${qualifiedContacts.length} contacts`);
   console.log(`Saved all contacts to ${allContactsPath}`);
   console.log(`Saved qualified contacts to ${qualifiedContactsPath}`);
+  console.log(`Saved generated contacts to ${generatedContactsPath}`);
   console.log(`Saved company domains to ${companyDomainsPath}`);
 }
 

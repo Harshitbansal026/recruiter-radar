@@ -98,15 +98,15 @@ Goal: Turn company/domain intelligence into recruiter, referral, hiring-manager,
 - [x] Extract recruiter/person names when available from post author fields, profile fields, or post text.
 - [x] Extract recruiter/person roles or titles when available.
 - [x] Link recruiter/person candidates to company domains and source evidence.
-- [ ] Generate candidate email patterns from recruiter/person names and verified company email domains:
+- [x] Generate candidate email patterns from recruiter/person names and verified company email domains:
   - `first.last@domain`
   - `first@domain`
   - `firstlast@domain`
   - `first_initial_last@domain`
   - `first_last@domain`
-- [ ] Mark generated emails as inferred, not directly verified.
-- [ ] Preserve source URLs and reasoning for every generated candidate email.
-- [ ] Add generated recruiter/referral/hiring contact candidates to `all_contacts.csv`.
+- [x] Mark generated emails as inferred, not directly verified.
+- [x] Preserve source URLs and reasoning for every generated candidate email.
+- [x] Add generated recruiter/referral/hiring contact candidates to `all_contacts.csv`.
 - [ ] Add only high-confidence recruiter/referral/hiring contact candidates to `qualified_contacts.csv`.
 
 ## Phase 4: Custom Email Confidence Service
@@ -303,3 +303,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `f9a68ea` - Add recruiter email generation phase.
 - `9a0641c` - Detect hiring context for extracted emails.
 - `a34e1de` - Classify outreach context for contacts.
+- `02270b8` - Extract contact person identity fields.
