@@ -34,33 +34,36 @@ No project commit should be considered complete unless this file has been checke
 Goal: Prove the data pipeline before building the full UI.
 
 - [x] Accept a CSV of up to 30 companies.
-- [x] Support company fields:
+- [x] Support company CSV fields:
   - `company_name`
+  - `company_aliases`
   - `linkedin_company_url`
   - `linkedin_search_url`
-  - `identified_domains`
+  - `official_domains`
+  - `old_domains`
   - `email_domains`
   - `career_domains`
   - `job_board_domains`
+  - `job_board_slugs`
   - `domain_confidence`
   - `skip_domain_scrape`
   - `last_scraped_at`
   - `status`
-- [ ] Support company identity fields:
+- [x] Support company identity fields:
   - `company_aliases`
   - `official_domains`
   - `old_domains`
   - `email_domains`
   - `career_domains`
   - `job_board_slugs`
-- [ ] Integrate Apify actor `supreme_coder/linkedin-post`.
+- [x] Integrate Apify actor `supreme_coder/linkedin-post`.
 - [x] Use tight scrape parameters:
   - low `limitPerSource`
   - date boundary with `scrapeUntil`
   - `deepScrape` disabled by default
   - `rawData` disabled by default
 - [x] Make scraping incremental using `last_scraped_at`.
-- [ ] Cache raw or normalized Apify results locally.
+- [x] Cache raw or normalized Apify results locally.
 - [x] Avoid re-scraping companies with `skip_domain_scrape = true` when domain data is already strong.
 
 ## Phase 2: Domain and Email Extraction
@@ -79,14 +82,14 @@ Goal: Extract only high-trust company-related contact and domain intelligence fr
 - [x] Identify and ignore non-company email domains where appropriate.
 - [x] Track source post URL and source text snippet.
 - [ ] Build a company identity graph from company names, aliases, official domains, old domains, email domains, career domains, job-board slugs, and source evidence.
-- [ ] Process only high-trust company-related posts/pages:
+- [x] Process only high-trust company-related posts/pages:
   - official company page
   - author clearly works at target company
   - email/domain matches company identity
   - official company/career domain appears
-- [ ] Ignore external agencies, staffing agents, random hiring posters, personal email domains, and posts with only company-name mentions but no company proof.
-- [ ] Exclude personal/free email domains from all contact CSV outputs.
-- [ ] Exclude job-board, LinkedIn, URL shortener, and unrelated external domains from candidate email domains.
+- [x] Ignore external agencies, staffing agents, random hiring posters, personal email domains, and posts with only company-name mentions but no company proof.
+- [x] Exclude personal/free email domains from all contact CSV outputs.
+- [x] Exclude job-board, LinkedIn, URL shortener, and unrelated external domains from candidate email domains.
 - [ ] Add domain confidence scoring.
 - [ ] Update company CSV with identified domains.
 - [x] Produce `all_contacts.csv`.
@@ -114,22 +117,22 @@ Goal: Use Firecrawl as a fallback/enrichment source to discover official company
 
 Goal: Turn company identity and domain intelligence into clean, company-affiliated contact candidates and work-email candidates.
 
-- [ ] Remove keyword-based outreach-context fields from main CSV outputs:
+- [x] Remove keyword-based outreach-context fields from main CSV outputs:
   - `contactContext`
   - `isHiringContext`
   - `matchedContextKeywords`
-- [ ] Decide whether a person/contact belongs to the target company using company identity, author fields, profile fields, source URL, and source domains.
+- [x] Decide whether a person/contact belongs to the target company using company identity, author fields, profile fields, source URL, and source domains.
 - [x] Extract recruiter/person names when available from post author fields, profile fields, or post text.
 - [x] Extract recruiter/person roles or titles when available.
 - [x] Link recruiter/person candidates to company domains and source evidence.
-- [ ] Keep company-affiliated people even when their visible email is personal, but do not keep the personal email as an outreach email.
-- [ ] Infer company email patterns from directly found company emails:
+- [x] Keep company-affiliated people even when their visible email is personal, but do not keep the personal email as an outreach email.
+- [x] Infer company email patterns from directly found company emails:
   - `first.last@domain`
   - `first@domain`
   - `firstlast@domain`
   - `first_initial_last@domain`
   - `first_last@domain`
-- [ ] Prioritize inferred company email patterns before fallback patterns when generating emails for other company-affiliated people.
+- [x] Prioritize inferred company email patterns before fallback patterns when generating emails for other company-affiliated people.
 - [x] Generate candidate email patterns from recruiter/person names and verified company email domains:
   - `first.last@domain`
   - `first@domain`
@@ -139,7 +142,7 @@ Goal: Turn company identity and domain intelligence into clean, company-affiliat
 - [x] Mark generated emails as inferred, not directly verified.
 - [x] Preserve source URLs and reasoning for every generated candidate email.
 - [x] Add generated company-affiliated contact candidates to `all_contacts.csv`.
-- [ ] Add only high-confidence company-affiliated contact candidates to `qualified_contacts.csv`.
+- [x] Add only high-confidence company-affiliated contact candidates to `qualified_contacts.csv`.
 
 ## Phase 5: Custom Email Confidence Service
 
@@ -296,6 +299,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - LinkedIn scraping has platform and compliance risk; use public data only and low volume.
 - Many posts will not contain emails.
 - Strict company-trust filtering may reduce contact volume but should improve output quality.
+- Current high-trust filtering uses company-name and company-domain matching from cached post data; full alias/domain identity graph enrichment is still pending.
 - Company identity matching can fail for acquisitions, rebrands, abbreviations, and unusual domains unless aliases/domains are maintained.
 - Email verification cannot guarantee mailbox validity.
 - SMTP checks may be blocked by mail servers or hosting providers.
@@ -345,3 +349,5 @@ Goal: Make the project presentable for recruiters and interviews.
 - `9a0641c` - Detect hiring context for extracted emails.
 - `a34e1de` - Classify outreach context for contacts.
 - `02270b8` - Extract contact person identity fields.
+- `34e5361` - Clarify high-trust company identity plan.
+- `c50543c` - Add Firecrawl company identity phase.

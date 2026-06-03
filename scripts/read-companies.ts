@@ -5,12 +5,15 @@ import "dotenv/config";
 
 type CompanyRow = {
   company_name: string;
+  company_aliases: string;
   linkedin_company_url: string;
   linkedin_search_url: string;
-  identified_domains: string;
+  official_domains: string;
+  old_domains: string;
   email_domains: string;
   career_domains: string;
   job_board_domains: string;
+  job_board_slugs: string;
   domain_confidence: string;
   skip_domain_scrape: string;
   last_scraped_at: string;
@@ -19,12 +22,15 @@ type CompanyRow = {
 
 const REQUIRED_COLUMNS: Array<keyof CompanyRow> = [
   "company_name",
+  "company_aliases",
   "linkedin_company_url",
   "linkedin_search_url",
-  "identified_domains",
+  "official_domains",
+  "old_domains",
   "email_domains",
   "career_domains",
   "job_board_domains",
+  "job_board_slugs",
   "domain_confidence",
   "skip_domain_scrape",
   "last_scraped_at",
@@ -44,7 +50,9 @@ type CompanyScrapePlan = {
   sourceUrl: string;
   status: string;
   skipDomainScrape: boolean;
-  identifiedDomains: string;
+  knownDomains: string;
+  companyAliases: string;
+  jobBoardSlugs: string;
   apifyInput: ApifyLinkedInPostInput;
 };
 
@@ -85,7 +93,37 @@ Notes:
 }
 
 function parseCsvLine(line: string): string[] {
-  return line.split(",").map((value) => value.trim());
+  const values: string[] = [];
+  let currentValue = "";
+  let isInsideQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"' && nextCharacter === '"') {
+      currentValue += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      isInsideQuotes = !isInsideQuotes;
+      continue;
+    }
+
+    if (character === "," && !isInsideQuotes) {
+      values.push(currentValue.trim());
+      currentValue = "";
+      continue;
+    }
+
+    currentValue += character;
+  }
+
+  values.push(currentValue.trim());
+
+  return values;
 }
 
 function parseCompaniesCsv(csvText: string): CompanyRow[] {
@@ -208,7 +246,18 @@ function filterCompanies(companies: CompanyRow[], companyName?: string): Company
 }
 
 function shouldSkipDomainScrape(company: CompanyRow): boolean {
-  return toBoolean(company.skip_domain_scrape) && Boolean(company.identified_domains);
+  return toBoolean(company.skip_domain_scrape) && Boolean(getKnownDomains(company));
+}
+
+function getKnownDomains(company: CompanyRow): string {
+  return [
+    company.official_domains,
+    company.old_domains,
+    company.email_domains,
+    company.career_domains,
+  ]
+    .filter(Boolean)
+    .join(";");
 }
 
 function buildApifyInput(company: CompanyRow, limitPerSource: number): ApifyLinkedInPostInput {
@@ -235,7 +284,9 @@ function buildScrapePlan(company: CompanyRow, limitPerSource: number): CompanySc
     sourceUrl,
     status: company.status || "pending",
     skipDomainScrape: toBoolean(company.skip_domain_scrape),
-    identifiedDomains: company.identified_domains || "none",
+    knownDomains: getKnownDomains(company) || "none",
+    companyAliases: company.company_aliases || "none",
+    jobBoardSlugs: company.job_board_slugs || "none",
     apifyInput: buildApifyInput(company, limitPerSource),
   };
 }
