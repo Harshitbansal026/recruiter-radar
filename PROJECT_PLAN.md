@@ -351,3 +351,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `02270b8` - Extract contact person identity fields.
 - `34e5361` - Clarify high-trust company identity plan.
 - `c50543c` - Add Firecrawl company identity phase.
+- `87dca3e` - Apply high-trust contact filtering.
