@@ -361,3 +361,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `c50543c` - Add Firecrawl company identity phase.
 - `87dca3e` - Apply high-trust contact filtering.
 - `0d80080` - Update plan log for contact filtering.
+- `f80a5f0` - Add HarvestAPI actor support.
