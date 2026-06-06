@@ -37,7 +37,7 @@ const REQUIRED_COLUMNS: Array<keyof CompanyRow> = [
   "status",
 ];
 
-type ApifyLinkedInPostInput = {
+type SupremeCoderLinkedInPostInput = {
   urls: string[];
   limitPerSource: number;
   deepScrape: boolean;
@@ -45,9 +45,22 @@ type ApifyLinkedInPostInput = {
   scrapeUntil?: string;
 };
 
+type HarvestApiLinkedInProfilePostsInput = {
+  targetUrls: string[];
+  maxPosts: number;
+  scrapeReactions: boolean;
+  scrapeComments: boolean;
+  postedLimitDate?: string;
+};
+
+type ApifyLinkedInPostInput =
+  | SupremeCoderLinkedInPostInput
+  | HarvestApiLinkedInProfilePostsInput;
+
 type CompanyScrapePlan = {
   companyName: string;
   sourceUrl: string;
+  actorId: string;
   status: string;
   skipDomainScrape: boolean;
   knownDomains: string;
@@ -89,6 +102,7 @@ Notes:
   - Dry-run does not call Apify or spend credits.
   - Live mode requires APIFY_TOKEN in a local .env file.
   - The optional number controls limitPerSource.
+  - APIFY_LINKEDIN_POST_ACTOR controls the actor adapter.
 `.trim());
 }
 
@@ -260,7 +274,11 @@ function getKnownDomains(company: CompanyRow): string {
     .join(";");
 }
 
-function buildApifyInput(company: CompanyRow, limitPerSource: number): ApifyLinkedInPostInput {
+function getLinkedInPostActorId(): string {
+  return process.env.APIFY_LINKEDIN_POST_ACTOR || "harvestapi/linkedin-profile-posts";
+}
+
+function buildSupremeCoderInput(company: CompanyRow, limitPerSource: number): SupremeCoderLinkedInPostInput {
   const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
   const input: ApifyLinkedInPostInput = {
     urls: [sourceUrl],
@@ -276,18 +294,51 @@ function buildApifyInput(company: CompanyRow, limitPerSource: number): ApifyLink
   return input;
 }
 
+function buildHarvestApiInput(
+  company: CompanyRow,
+  limitPerSource: number,
+): HarvestApiLinkedInProfilePostsInput {
+  const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
+  const input: HarvestApiLinkedInProfilePostsInput = {
+    targetUrls: [sourceUrl],
+    maxPosts: limitPerSource,
+    scrapeReactions: false,
+    scrapeComments: false,
+  };
+
+  if (company.last_scraped_at) {
+    input.postedLimitDate = company.last_scraped_at;
+  }
+
+  return input;
+}
+
+function buildApifyInput(
+  company: CompanyRow,
+  limitPerSource: number,
+  actorId: string,
+): ApifyLinkedInPostInput {
+  if (actorId === "harvestapi/linkedin-profile-posts") {
+    return buildHarvestApiInput(company, limitPerSource);
+  }
+
+  return buildSupremeCoderInput(company, limitPerSource);
+}
+
 function buildScrapePlan(company: CompanyRow, limitPerSource: number): CompanyScrapePlan {
   const sourceUrl = company.linkedin_company_url || company.linkedin_search_url;
+  const actorId = getLinkedInPostActorId();
 
   return {
     companyName: company.company_name,
     sourceUrl,
+    actorId,
     status: company.status || "pending",
     skipDomainScrape: toBoolean(company.skip_domain_scrape),
     knownDomains: getKnownDomains(company) || "none",
     companyAliases: company.company_aliases || "none",
     jobBoardSlugs: company.job_board_slugs || "none",
-    apifyInput: buildApifyInput(company, limitPerSource),
+    apifyInput: buildApifyInput(company, limitPerSource, actorId),
   };
 }
 
@@ -298,7 +349,7 @@ async function saveJson(filePath: string, data: unknown) {
 
 async function runApifyActor(company: CompanyRow, input: ApifyLinkedInPostInput) {
   const token = process.env.APIFY_TOKEN;
-  const actorId = process.env.APIFY_LINKEDIN_POST_ACTOR || "supreme_coder/linkedin-post";
+  const actorId = getLinkedInPostActorId();
 
   if (!token) {
     throw new Error("APIFY_TOKEN is missing. Add it to a local .env file before running with --live.");

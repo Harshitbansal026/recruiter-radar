@@ -292,10 +292,14 @@ Goal: Make the project presentable for recruiters and interviews.
 
 - Apify actor usage may require paid credits.
 - Apify Free plan currently includes $5 monthly platform usage credits; the LinkedIn post actor is pay-per-event and listed as "$1 per 1k" on its Apify page.
+- HarvestAPI `harvestapi/linkedin-profile-posts` is the current replacement test actor; treat its cost as USD 2 per 1,000 posts.
 - Firecrawl Free plan currently includes 1,000 credits/month; scrape/crawl/map cost 1 credit per page and search costs 2 credits per 10 results.
 - Firecrawl has no pure pay-per-use monthly plan; upgrade tiers are monthly subscriptions, so the project should use Firecrawl only as targeted fallback/enrichment.
 - Actor output shape may change.
-- Live Apify result caching is implemented in code but still needs verification with a real `APIFY_TOKEN` and one low-limit live run.
+- Live Apify result caching is implemented and verified with `harvestapi/linkedin-profile-posts` using an HCLTech low-limit run on June 4, 2026.
+- Live Apify test on June 3, 2026 with HCLTech returned zero items while the actor page showed "Actor is under maintenance"; avoid repeated live retries until the actor is stable or a replacement actor is selected.
+- Scraper code now supports actor-specific Apify input adapters so the project can switch between `supreme_coder/linkedin-post` and `harvestapi/linkedin-profile-posts`.
+- HarvestAPI live output uses `linkedinUrl`, `content`, and nested `author` fields; extraction mapping is implemented and verified against the HCLTech cache.
 - LinkedIn scraping has platform and compliance risk; use public data only and low volume.
 - Many posts will not contain emails.
 - Strict company-trust filtering may reduce contact volume but should improve output quality.
@@ -316,6 +320,10 @@ Goal: Make the project presentable for recruiters and interviews.
 
 - Project name: RecruiterRadar.
 - Initial data source: Apify `supreme_coder/linkedin-post`.
+- Current Apify status: `supreme_coder/linkedin-post` is under maintenance as of June 3, 2026, so live scraping is paused to avoid wasting credits.
+- Current replacement Apify test actor: `harvestapi/linkedin-profile-posts`.
+- HarvestAPI live test result: HCLTech company URL with `maxPosts = 3` returned 3 posts and cached successfully on June 4, 2026.
+- HarvestAPI extraction test result: HCLTech cache produced 0 contacts and 1 company career domain (`careers.hcltech.com`), confirming the pipeline does not invent contacts from marketing/career-branding posts.
 - Initial scope: 30 companies.
 - Firecrawl role: fallback only when domain is not identified from LinkedIn/post data.
 - Email verification strategy: custom confidence service first, third-party APIs optional.
@@ -352,3 +360,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `34e5361` - Clarify high-trust company identity plan.
 - `c50543c` - Add Firecrawl company identity phase.
 - `87dca3e` - Apply high-trust contact filtering.
+- `0d80080` - Update plan log for contact filtering.

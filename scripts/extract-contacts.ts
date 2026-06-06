@@ -57,6 +57,7 @@ type EmailPattern = "first.last" | "first" | "firstlast" | "first_initial_last" 
 
 const EMAIL_PATTERN = /[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi;
 const URL_PATTERN = /https?:\/\/[^\s)]+/gi;
+const DOMAIN_PATTERN = /\b(?:[a-z0-9-]+\.)+[a-z]{2,}\b/gi;
 const JOB_BOARD_DOMAINS = [
   "greenhouse.io",
   "lever.co",
@@ -117,6 +118,28 @@ function getStringValue(record: Record<string, unknown>, keys: string[]): string
   return "";
 }
 
+function getObjectValue(record: Record<string, unknown>, key: string): Record<string, unknown> | undefined {
+  const value = record[key];
+
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function getNestedStringValue(record: Record<string, unknown>, pathParts: string[]): string {
+  let currentValue: unknown = record;
+
+  for (const pathPart of pathParts) {
+    if (!currentValue || typeof currentValue !== "object" || Array.isArray(currentValue)) {
+      return "";
+    }
+
+    currentValue = (currentValue as Record<string, unknown>)[pathPart];
+  }
+
+  return typeof currentValue === "string" && currentValue.trim() ? currentValue.trim() : "";
+}
+
 function getUniqueMatches(text: string, pattern: RegExp): string[] {
   return Array.from(new Set(text.match(pattern) ?? []));
 }
@@ -135,6 +158,13 @@ function getDomainFromUrl(url: string): string {
   } catch {
     return "";
   }
+}
+
+function cleanDomain(domain: string): string {
+  return domain
+    .toLowerCase()
+    .replace(/^www\./, "")
+    .replace(/[),.;:!?]+$/g, "");
 }
 
 function isJobBoardDomain(domain: string): boolean {
@@ -216,18 +246,28 @@ function getTrustedItems(cachedRun: CachedApifyRun): TrustedItem[] {
     }
 
     const record = item as Record<string, unknown>;
+    const author = getObjectValue(record, "author");
+    const authorType = author ? getStringValue(author, ["type"]) : "";
+    const authorName = author ? getStringValue(author, ["name", "universalName"]) : "";
+    const authorProfileUrl = author ? getStringValue(author, ["linkedinUrl"]) : "";
     const trustedItem: TrustedItem = {
       record,
-      sourceUrl: getStringValue(record, ["url", "postUrl", "link"]),
-      sourceText: getStringValue(record, ["text", "content", "description"]),
-      personName: getStringValue(record, ["authorName", "author", "name", "profileName"]),
-      personRole: getStringValue(record, ["authorTitle", "title", "headline", "profileHeadline"]),
-      personProfileUrl: getStringValue(record, [
-        "authorProfileUrl",
-        "profileUrl",
-        "authorUrl",
-        "profileLink",
+      sourceUrl: getStringValue(record, [
+        "url",
+        "postUrl",
+        "link",
+        "linkedinUrl",
+        "shareLinkedinUrl",
       ]),
+      sourceText: getStringValue(record, ["text", "content", "description"]),
+      personName: getStringValue(record, ["authorName", "name", "profileName"]) || authorName,
+      personRole:
+        getStringValue(record, ["authorTitle", "title", "headline", "profileHeadline"]) ||
+        getNestedStringValue(record, ["header", "text"]) ||
+        (authorType === "company" ? "Company Page" : authorType),
+      personProfileUrl:
+        getStringValue(record, ["authorProfileUrl", "profileUrl", "authorUrl", "profileLink"]) ||
+        authorProfileUrl,
     };
 
     if (
@@ -434,6 +474,9 @@ function extractDomainsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedI
   for (const item of trustedItems) {
     const emails = getUniqueMatches(item.sourceText, EMAIL_PATTERN);
     const urls = getUniqueMatches(item.sourceText, URL_PATTERN);
+    const plainDomains = getUniqueMatches(item.sourceText, DOMAIN_PATTERN)
+      .map(cleanDomain)
+      .filter((domain) => domain && !emails.some((email) => email.toLowerCase().endsWith(`@${domain}`)));
 
     for (const email of emails) {
       const domain = getDomainFromEmail(email);
@@ -467,6 +510,25 @@ function extractDomainsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedI
           sourceUrl: item.sourceUrl,
           sourceText: item.sourceText,
           reason: "Company-matching career/apply domain was extracted from a trusted post.",
+        });
+      }
+    }
+
+    for (const domain of plainDomains) {
+      const key = `${domain}:career_domain`;
+
+      if (
+        /career|jobs|job|apply/i.test(domain) &&
+        domainMatchesCompanyIdentity(domain, cachedRun.companyName) &&
+        !domainsByKey.has(key)
+      ) {
+        domainsByKey.set(key, {
+          companyName: cachedRun.companyName,
+          domain,
+          domainType: "career_domain",
+          sourceUrl: item.sourceUrl,
+          sourceText: item.sourceText,
+          reason: "Company-matching career domain was extracted from plain text in a trusted post.",
         });
       }
     }
