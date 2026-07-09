@@ -18,6 +18,7 @@ After every commit:
 3. Confirm the plan still matches the current codebase.
 
 No project commit should be considered complete unless this file has been checked before and after the commit.
+Administrative commits that only update this commit log are not required to list themselves, which avoids an infinite commit-log update loop.
 
 ## Phase 0: Project Setup
 
@@ -362,3 +363,4 @@ Goal: Make the project presentable for recruiters and interviews.
 - `87dca3e` - Apply high-trust contact filtering.
 - `0d80080` - Update plan log for contact filtering.
 - `f80a5f0` - Add HarvestAPI actor support.
+- `fb1c7c0` - Update plan log for HarvestAPI support.
