@@ -99,6 +99,7 @@ Goal: Extract only high-trust company-related contact and domain intelligence fr
   - unrelated domain
 - [x] Identify and ignore non-company email domains where appropriate.
 - [x] Track source post URL and source text snippet.
+- [x] Use CSV-backed company aliases and known domains during extraction trust checks.
 - [ ] Build a company identity graph from company names, aliases, official domains, old domains, email domains, career domains, job-board slugs, and source evidence.
 - [x] Process only high-trust company-related posts/pages:
   - official company page
@@ -327,7 +328,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - LinkedIn scraping has platform and compliance risk; use public data only and low volume.
 - Many posts will not contain emails.
 - Strict company-trust filtering may reduce contact volume but should improve output quality.
-- Current high-trust filtering uses company-name and company-domain matching from cached post data; full alias/domain identity graph enrichment is still pending.
+- Current high-trust filtering uses CSV-backed company aliases and known domains; full source-evidence identity graph enrichment is still pending.
 - Company identity matching can fail for acquisitions, rebrands, abbreviations, and unusual domains unless aliases/domains are maintained.
 - Email verification cannot guarantee mailbox validity.
 - SMTP checks may be blocked by mail servers or hosting providers.

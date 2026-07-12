@@ -12,6 +12,33 @@ type CachedApifyRun = {
   cachedAt: string;
 };
 
+type CompanyRow = {
+  company_name: string;
+  company_aliases: string;
+  linkedin_company_url: string;
+  linkedin_search_url: string;
+  official_domains: string;
+  old_domains: string;
+  email_domains: string;
+  career_domains: string;
+  job_board_domains: string;
+  job_board_slugs: string;
+  domain_confidence: string;
+  skip_domain_scrape: string;
+  last_scraped_at: string;
+  status: string;
+};
+
+type CompanyIdentity = {
+  canonicalName: string;
+  aliases: string[];
+  tokens: string[];
+  trustedDomains: string[];
+  emailDomains: string[];
+  careerDomains: string[];
+  jobBoardDomains: string[];
+};
+
 type ExtractedContact = {
   companyName: string;
   personName: string;
@@ -122,6 +149,7 @@ const CONTACT_USEFULNESS_KEYWORDS = [
   "people team",
   "apply",
 ];
+const COMPANY_CSV_PATH = "data/input/companies.sample.csv";
 
 function getStringValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -161,6 +189,72 @@ function getUniqueMatches(text: string, pattern: RegExp): string[] {
   return Array.from(new Set(text.match(pattern) ?? []));
 }
 
+function parseCsvLine(line: string): string[] {
+  const values: string[] = [];
+  let currentValue = "";
+  let isInsideQuotes = false;
+
+  for (let index = 0; index < line.length; index += 1) {
+    const character = line[index];
+    const nextCharacter = line[index + 1];
+
+    if (character === '"' && nextCharacter === '"') {
+      currentValue += '"';
+      index += 1;
+      continue;
+    }
+
+    if (character === '"') {
+      isInsideQuotes = !isInsideQuotes;
+      continue;
+    }
+
+    if (character === "," && !isInsideQuotes) {
+      values.push(currentValue.trim());
+      currentValue = "";
+      continue;
+    }
+
+    currentValue += character;
+  }
+
+  values.push(currentValue.trim());
+
+  return values;
+}
+
+function parseCompanyCsv(csvText: string): CompanyRow[] {
+  const lines = csvText
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    return [];
+  }
+
+  const headers = parseCsvLine(lines[0]);
+
+  return lines.slice(1).map((line) => {
+    const values = parseCsvLine(line);
+
+    return Object.fromEntries(
+      headers.map((header, headerIndex) => [header, values[headerIndex] ?? ""]),
+    ) as CompanyRow;
+  });
+}
+
+function splitList(value: string): string[] {
+  return value
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
 function getDomainFromEmail(email: string): string {
   return email.split("@")[1]?.toLowerCase() ?? "";
 }
@@ -196,15 +290,68 @@ function normalizeIdentityValue(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, "");
 }
 
-function getCompanyTokens(companyName: string): string[] {
-  const words = companyName
+function getCompanyTokens(identityNames: string[]): string[] {
+  const words = identityNames
+    .join(" ")
     .toLowerCase()
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/[\s-]+/)
     .filter((word) => word && !GENERIC_COMPANY_WORDS.includes(word));
-  const normalizedCompanyName = normalizeIdentityValue(companyName);
+  const normalizedNames = identityNames.map(normalizeIdentityValue);
 
-  return Array.from(new Set([normalizedCompanyName, ...words].filter((token) => token.length >= 2)));
+  return unique([...normalizedNames, ...words].filter((token) => token.length >= 2));
+}
+
+function createFallbackCompanyIdentity(companyName: string): CompanyIdentity {
+  const aliases = [companyName];
+
+  return {
+    canonicalName: companyName,
+    aliases,
+    tokens: getCompanyTokens(aliases),
+    trustedDomains: [],
+    emailDomains: [],
+    careerDomains: [],
+    jobBoardDomains: [],
+  };
+}
+
+function buildCompanyIdentity(companyName: string, companyRow?: CompanyRow): CompanyIdentity {
+  if (!companyRow) {
+    return createFallbackCompanyIdentity(companyName);
+  }
+
+  const aliases = unique([companyRow.company_name, ...splitList(companyRow.company_aliases)]);
+  const emailDomains = splitList(companyRow.email_domains).map(cleanDomain);
+  const careerDomains = splitList(companyRow.career_domains).map(cleanDomain);
+  const jobBoardDomains = splitList(companyRow.job_board_domains).map(cleanDomain);
+  const trustedDomains = unique([
+    ...splitList(companyRow.official_domains).map(cleanDomain),
+    ...splitList(companyRow.old_domains).map(cleanDomain),
+    ...emailDomains,
+    ...careerDomains,
+  ]);
+
+  return {
+    canonicalName: companyRow.company_name || companyName,
+    aliases,
+    tokens: getCompanyTokens(aliases),
+    trustedDomains,
+    emailDomains,
+    careerDomains,
+    jobBoardDomains,
+  };
+}
+
+async function loadCompanyIdentity(companyName: string): Promise<CompanyIdentity> {
+  const csvPath = path.resolve(COMPANY_CSV_PATH);
+  const csvText = await readFile(csvPath, "utf8");
+  const companyRows = parseCompanyCsv(csvText);
+  const companyRow = companyRows.find(
+    (row) => row.company_name.toLowerCase() === companyName.toLowerCase(),
+  );
+
+  return buildCompanyIdentity(companyName, companyRow);
 }
 
 function getDomainLabels(domain: string): string[] {
@@ -214,16 +361,23 @@ function getDomainLabels(domain: string): string[] {
     .filter((label) => label && !["www", "com", "co", "in", "io", "ai", "net", "org"].includes(label));
 }
 
-function domainMatchesCompanyIdentity(domain: string, companyName: string): boolean {
+function domainMatchesCompanyIdentity(domain: string, identity: CompanyIdentity): boolean {
   if (!domain || isPersonalEmailDomain(domain) || isJobBoardDomain(domain) || isExternalSourceDomain(domain)) {
     return false;
   }
 
-  const companyTokens = getCompanyTokens(companyName);
+  const trustedDomainMatch = identity.trustedDomains.some(
+    (trustedDomain) => domain === trustedDomain || domain.endsWith(`.${trustedDomain}`),
+  );
+
+  if (trustedDomainMatch) {
+    return true;
+  }
+
   const domainLabels = getDomainLabels(domain);
   const normalizedDomain = normalizeIdentityValue(domainLabels.join(""));
 
-  return companyTokens.some(
+  return identity.tokens.some(
     (token) =>
       domainLabels.includes(token) ||
       normalizedDomain.includes(token) ||
@@ -231,26 +385,26 @@ function domainMatchesCompanyIdentity(domain: string, companyName: string): bool
   );
 }
 
-function isCompanyAffiliatedAuthor(item: TrustedItem, companyName: string): boolean {
+function isCompanyAffiliatedAuthor(item: TrustedItem, identity: CompanyIdentity): boolean {
   const normalizedAuthorName = normalizeIdentityValue(item.personName);
-  const normalizedCompanyName = normalizeIdentityValue(companyName);
   const normalizedRole = item.personRole.toLowerCase();
+  const normalizedAliases = identity.aliases.map(normalizeIdentityValue);
+  const lowerCaseAliases = identity.aliases.map((alias) => alias.toLowerCase());
 
   return (
-    normalizedAuthorName === normalizedCompanyName ||
-    normalizedRole.includes(` at ${companyName.toLowerCase()}`) ||
-    normalizedRole.includes(companyName.toLowerCase()) ||
+    normalizedAliases.includes(normalizedAuthorName) ||
+    lowerCaseAliases.some((alias) => normalizedRole.includes(` at ${alias}`) || normalizedRole.includes(alias)) ||
     normalizedRole === "company page"
   );
 }
 
-function itemHasCompanyDomainEvidence(item: TrustedItem, companyName: string): boolean {
+function itemHasCompanyDomainEvidence(item: TrustedItem, identity: CompanyIdentity): boolean {
   const emails = getUniqueMatches(item.sourceText, EMAIL_PATTERN);
   const urls = getUniqueMatches(item.sourceText, URL_PATTERN);
 
   return (
-    emails.some((email) => domainMatchesCompanyIdentity(getDomainFromEmail(email), companyName)) ||
-    urls.some((url) => domainMatchesCompanyIdentity(getDomainFromUrl(url), companyName))
+    emails.some((email) => domainMatchesCompanyIdentity(getDomainFromEmail(email), identity)) ||
+    urls.some((url) => domainMatchesCompanyIdentity(getDomainFromUrl(url), identity))
   );
 }
 
@@ -260,7 +414,7 @@ function hasContactUsefulnessSignal(item: TrustedItem): boolean {
   return CONTACT_USEFULNESS_KEYWORDS.some((keyword) => searchableText.includes(keyword));
 }
 
-function getTrustedItems(cachedRun: CachedApifyRun): TrustedItem[] {
+function getTrustedItems(cachedRun: CachedApifyRun, identity: CompanyIdentity): TrustedItem[] {
   const trustedItems: TrustedItem[] = [];
 
   for (const item of cachedRun.items) {
@@ -294,8 +448,8 @@ function getTrustedItems(cachedRun: CachedApifyRun): TrustedItem[] {
     };
 
     if (
-      isCompanyAffiliatedAuthor(trustedItem, cachedRun.companyName) ||
-      itemHasCompanyDomainEvidence(trustedItem, cachedRun.companyName)
+      isCompanyAffiliatedAuthor(trustedItem, identity) ||
+      itemHasCompanyDomainEvidence(trustedItem, identity)
     ) {
       trustedItems.push(trustedItem);
     }
@@ -427,7 +581,11 @@ function getPatternPriorityByDomain(directContacts: ExtractedContact[]): Map<str
   return patternsByDomain;
 }
 
-function extractCompanyPeople(cachedRun: CachedApifyRun, trustedItems: TrustedItem[]): CompanyPerson[] {
+function extractCompanyPeople(
+  cachedRun: CachedApifyRun,
+  trustedItems: TrustedItem[],
+  identity: CompanyIdentity,
+): CompanyPerson[] {
   const peopleByKey = new Map<string, CompanyPerson>();
 
   for (const item of trustedItems) {
@@ -435,7 +593,7 @@ function extractCompanyPeople(cachedRun: CachedApifyRun, trustedItems: TrustedIt
       continue;
     }
 
-    if (!isCompanyAffiliatedAuthor(item, cachedRun.companyName)) {
+    if (!isCompanyAffiliatedAuthor(item, identity)) {
       continue;
     }
 
@@ -460,7 +618,11 @@ function extractCompanyPeople(cachedRun: CachedApifyRun, trustedItems: TrustedIt
   return Array.from(peopleByKey.values());
 }
 
-function extractContactsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedItem[]): ExtractedContact[] {
+function extractContactsFromRun(
+  cachedRun: CachedApifyRun,
+  trustedItems: TrustedItem[],
+  identity: CompanyIdentity,
+): ExtractedContact[] {
   const contactsByEmail = new Map<string, ExtractedContact>();
 
   for (const item of trustedItems) {
@@ -471,7 +633,7 @@ function extractContactsFromRun(cachedRun: CachedApifyRun, trustedItems: Trusted
       const normalizedEmail = email.toLowerCase();
       const emailDomain = getDomainFromEmail(normalizedEmail);
 
-      if (!domainMatchesCompanyIdentity(emailDomain, cachedRun.companyName)) {
+      if (!domainMatchesCompanyIdentity(emailDomain, identity)) {
         continue;
       }
 
@@ -498,7 +660,11 @@ function extractContactsFromRun(cachedRun: CachedApifyRun, trustedItems: Trusted
   return Array.from(contactsByEmail.values());
 }
 
-function extractDomainsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedItem[]): ExtractedDomain[] {
+function extractDomainsFromRun(
+  cachedRun: CachedApifyRun,
+  trustedItems: TrustedItem[],
+  identity: CompanyIdentity,
+): ExtractedDomain[] {
   const domainsByKey = new Map<string, ExtractedDomain>();
 
   for (const item of trustedItems) {
@@ -512,7 +678,7 @@ function extractDomainsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedI
       const domain = getDomainFromEmail(email);
       const key = `${domain}:email_domain`;
 
-      if (domainMatchesCompanyIdentity(domain, cachedRun.companyName) && !domainsByKey.has(key)) {
+      if (domainMatchesCompanyIdentity(domain, identity) && !domainsByKey.has(key)) {
         domainsByKey.set(key, {
           companyName: cachedRun.companyName,
           domain,
@@ -530,7 +696,7 @@ function extractDomainsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedI
 
       if (
         /career|jobs|job|apply/i.test(url) &&
-        domainMatchesCompanyIdentity(domain, cachedRun.companyName) &&
+        domainMatchesCompanyIdentity(domain, identity) &&
         !domainsByKey.has(key)
       ) {
         domainsByKey.set(key, {
@@ -549,7 +715,7 @@ function extractDomainsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedI
 
       if (
         /career|jobs|job|apply/i.test(domain) &&
-        domainMatchesCompanyIdentity(domain, cachedRun.companyName) &&
+        domainMatchesCompanyIdentity(domain, identity) &&
         !domainsByKey.has(key)
       ) {
         domainsByKey.set(key, {
@@ -567,8 +733,11 @@ function extractDomainsFromRun(cachedRun: CachedApifyRun, trustedItems: TrustedI
   return Array.from(domainsByKey.values());
 }
 
-function getCandidateEmailDomains(domains: ExtractedDomain[]): string[] {
-  return Array.from(new Set(domains.map((domain) => domain.domain).filter(Boolean)));
+function getCandidateEmailDomains(domains: ExtractedDomain[], identity: CompanyIdentity): string[] {
+  return unique([
+    ...identity.emailDomains,
+    ...domains.map((domain) => domain.domain),
+  ]);
 }
 
 function getPatternOrder(domain: string, patternsByDomain: Map<string, EmailPattern[]>): EmailPattern[] {
@@ -581,8 +750,9 @@ function generateInferredContacts(
   companyPeople: CompanyPerson[],
   directContacts: ExtractedContact[],
   domains: ExtractedDomain[],
+  identity: CompanyIdentity,
 ): ExtractedContact[] {
-  const candidateEmailDomains = getCandidateEmailDomains(domains);
+  const candidateEmailDomains = getCandidateEmailDomains(domains, identity);
   const patternsByDomain = getPatternPriorityByDomain(directContacts);
   const inferredContacts: ExtractedContact[] = [];
   const existingEmails = new Set(directContacts.map((contact) => contact.email));
@@ -634,11 +804,12 @@ async function main() {
   const generatedContactsPath = path.resolve("data/output/generated_contacts.csv");
   const cachedRunText = await readFile(inputPath, "utf8");
   const cachedRun = JSON.parse(cachedRunText) as CachedApifyRun;
-  const trustedItems = getTrustedItems(cachedRun);
-  const companyPeople = extractCompanyPeople(cachedRun, trustedItems);
-  const directContacts = extractContactsFromRun(cachedRun, trustedItems);
-  const domains = extractDomainsFromRun(cachedRun, trustedItems);
-  const generatedContacts = generateInferredContacts(companyPeople, directContacts, domains);
+  const identity = await loadCompanyIdentity(cachedRun.companyName);
+  const trustedItems = getTrustedItems(cachedRun, identity);
+  const companyPeople = extractCompanyPeople(cachedRun, trustedItems, identity);
+  const directContacts = extractContactsFromRun(cachedRun, trustedItems, identity);
+  const domains = extractDomainsFromRun(cachedRun, trustedItems, identity);
+  const generatedContacts = generateInferredContacts(companyPeople, directContacts, domains, identity);
   const contacts = [...directContacts, ...generatedContacts];
   const qualifiedContacts = contacts.filter((contact) => contact.confidence === "high");
   const allContactsCsv = contactsToCsv(contacts);
@@ -652,6 +823,8 @@ async function main() {
   await saveText(companyDomainsPath, companyDomainsCsv);
 
   console.log(`Read cached Apify run from ${inputPath}`);
+  console.log(`Loaded company identity for ${identity.canonicalName}`);
+  console.log(`Known identity domains: ${identity.trustedDomains.join(", ") || "none"}`);
   console.log(`Trusted ${trustedItems.length} company-related items`);
   console.log(`Found ${companyPeople.length} company-affiliated people`);
   console.log(`Extracted ${directContacts.length} direct company-domain contacts`);
