@@ -30,7 +30,7 @@ Administrative commits that only update this commit log are not required to list
 - [x] Add environment variable template.
 - [x] Document required API keys and optional API keys.
 
-## Phase 1: CSV-Based Apify LinkedIn Post Scraper
+## Phase 1: CSV-Based Apify LinkedIn Search Scraper
 
 Goal: Prove the data pipeline before building the full UI.
 
@@ -66,6 +66,23 @@ Goal: Prove the data pipeline before building the full UI.
 - [x] Make scraping incremental using `last_scraped_at`.
 - [x] Cache raw or normalized Apify results locally.
 - [x] Avoid re-scraping companies with `skip_domain_scrape = true` when domain data is already strong.
+- [x] Switch the active MVP discovery actor to `harvestapi/linkedin-post-search`.
+- [x] Generate company-scoped LinkedIn search queries from CSV identity fields:
+  - `linkedin_company_url`
+  - `job_board_slugs`
+  - company LinkedIn public identifier
+  - `company_aliases`
+- [x] Use Apify-side filters before scraping to reduce paid post usage:
+  - `searchQueries`
+  - `authorsCompanyPublicIdentifiers`
+  - `postedLimit` or `postedLimitDate`
+  - low `maxPosts`
+  - `scrapeComments = false`
+  - `scrapeReactions = false`
+- [x] Run two focused search lanes:
+  - hiring intent discovery
+  - company email pattern discovery
+- [x] Avoid manual profile URL input for the MVP unless it is used only as a temporary debugging fixture.
 
 ## Phase 2: Domain and Email Extraction
 
@@ -100,6 +117,7 @@ Goal: Extract only high-trust company-related contact and domain intelligence fr
 
 Goal: Use Firecrawl as a fallback/enrichment source to discover official company identity when Apify/LinkedIn data is incomplete.
 
+- [ ] Keep Firecrawl out of the first working prototype unless company identity is too weak to run Apify safely.
 - [ ] Use Firecrawl only when company identity is missing or low confidence.
 - [ ] Scrape/search official company websites, careers pages, contact pages, about/team pages, and blog/author pages.
 - [ ] Discover and classify:
@@ -118,6 +136,9 @@ Goal: Use Firecrawl as a fallback/enrichment source to discover official company
 
 Goal: Turn company identity and domain intelligence into clean, company-affiliated contact candidates and work-email candidates.
 
+- [x] Treat hiring/referral keywords as a pre-save usefulness gate, not as extra CSV output fields.
+- [x] Accept direct company-domain emails from non-hiring posts for email pattern discovery.
+- [x] Do not treat non-hiring email-pattern evidence as a recruiter lead unless the person/post also passes usefulness checks.
 - [x] Remove keyword-based outreach-context fields from main CSV outputs:
   - `contactContext`
   - `isHiringContext`
@@ -294,6 +315,8 @@ Goal: Make the project presentable for recruiters and interviews.
 - Apify actor usage may require paid credits.
 - Apify Free plan currently includes $5 monthly platform usage credits; the LinkedIn post actor is pay-per-event and listed as "$1 per 1k" on its Apify page.
 - HarvestAPI `harvestapi/linkedin-profile-posts` is the current replacement test actor; treat its cost as USD 2 per 1,000 posts.
+- HarvestAPI `harvestapi/linkedin-post-search` should be the next MVP actor because it can search posts by query and filter by company/author before scraping, reducing paid irrelevant post usage.
+- Keyword filtering after scraping still consumes Apify post credits, so filtering must happen as early as possible through actor inputs.
 - Firecrawl Free plan currently includes 1,000 credits/month; scrape/crawl/map cost 1 credit per page and search costs 2 credits per 10 results.
 - Firecrawl has no pure pay-per-use monthly plan; upgrade tiers are monthly subscriptions, so the project should use Firecrawl only as targeted fallback/enrichment.
 - Actor output shape may change.
@@ -323,10 +346,11 @@ Goal: Make the project presentable for recruiters and interviews.
 - Initial data source: Apify `supreme_coder/linkedin-post`.
 - Current Apify status: `supreme_coder/linkedin-post` is under maintenance as of June 3, 2026, so live scraping is paused to avoid wasting credits.
 - Current replacement Apify test actor: `harvestapi/linkedin-profile-posts`.
+- Next MVP discovery actor: `harvestapi/linkedin-post-search`, because it supports company-scoped search queries and should reduce irrelevant paid scraping.
 - HarvestAPI live test result: HCLTech company URL with `maxPosts = 3` returned 3 posts and cached successfully on June 4, 2026.
 - HarvestAPI extraction test result: HCLTech cache produced 0 contacts and 1 company career domain (`careers.hcltech.com`), confirming the pipeline does not invent contacts from marketing/career-branding posts.
 - Initial scope: 30 companies.
-- Firecrawl role: fallback only when domain is not identified from LinkedIn/post data.
+- Firecrawl role: planned enrichment/fallback after the Apify-first MVP is working; use it earlier only when company identity is too weak to safely search/filter LinkedIn data.
 - Email verification strategy: custom confidence service first, third-party APIs optional.
 - Export strategy: all contacts and qualified contacts.
 - Product positioning: recruiter discovery and outreach assistant, not a spam or bulk-scraping tool.
@@ -334,6 +358,14 @@ Goal: Make the project presentable for recruiters and interviews.
 - Main CSV outputs should stay clean and exclude agency/external/personal-email noise.
 - Initial script language: TypeScript running on Node.js.
 - Decision update: The initial script language was changed from Python to TypeScript before Phase 1 so the scraper pipeline and future Next.js app use the same language.
+
+## Saved Fallback Pipeline Reference
+
+(This section is intentionally not a checkbox phase. It preserves the earlier pipeline idea in case the current approach gets stuck and we need to compare, reset, or recover parts of the workflow.
+
+Earlier pipeline:
+
+Company CSV with known domains and LinkedIn company URLs -> scrape recent company/profile posts using `harvestapi/linkedin-profile-posts` or the older `supreme_coder/linkedin-post` actor -> cache raw results -> extract visible company-domain emails/domains -> classify company/career/job-board/personal domains -> keep only high-trust company-related posts -> infer email patterns from directly found company emails -> generate candidate work emails for company-affiliated people -> export `all_contacts.csv` and `qualified_contacts.csv` -> later add Firecrawl enrichment, DNS/MX/SMTP validation, dashboard, database, AI scoring, and outreach.)
 
 ## Commit Log
 

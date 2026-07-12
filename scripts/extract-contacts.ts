@@ -105,6 +105,23 @@ const FALLBACK_EMAIL_PATTERNS: EmailPattern[] = [
   "first_initial_last",
   "first_last",
 ];
+const CONTACT_USEFULNESS_KEYWORDS = [
+  "hiring",
+  "we are hiring",
+  "open role",
+  "open roles",
+  "opening",
+  "openings",
+  "referral",
+  "refer",
+  "send resume",
+  "send your resume",
+  "recruiter",
+  "talent acquisition",
+  "hr",
+  "people team",
+  "apply",
+];
 
 function getStringValue(record: Record<string, unknown>, keys: string[]): string {
   for (const key of keys) {
@@ -235,6 +252,12 @@ function itemHasCompanyDomainEvidence(item: TrustedItem, companyName: string): b
     emails.some((email) => domainMatchesCompanyIdentity(getDomainFromEmail(email), companyName)) ||
     urls.some((url) => domainMatchesCompanyIdentity(getDomainFromUrl(url), companyName))
   );
+}
+
+function hasContactUsefulnessSignal(item: TrustedItem): boolean {
+  const searchableText = `${item.sourceText} ${item.personRole}`.toLowerCase();
+
+  return CONTACT_USEFULNESS_KEYWORDS.some((keyword) => searchableText.includes(keyword));
 }
 
 function getTrustedItems(cachedRun: CachedApifyRun): TrustedItem[] {
@@ -408,6 +431,10 @@ function extractCompanyPeople(cachedRun: CachedApifyRun, trustedItems: TrustedIt
   const peopleByKey = new Map<string, CompanyPerson>();
 
   for (const item of trustedItems) {
+    if (!hasContactUsefulnessSignal(item)) {
+      continue;
+    }
+
     if (!isCompanyAffiliatedAuthor(item, cachedRun.companyName)) {
       continue;
     }
@@ -438,6 +465,7 @@ function extractContactsFromRun(cachedRun: CachedApifyRun, trustedItems: Trusted
 
   for (const item of trustedItems) {
     const emails = getUniqueMatches(item.sourceText, EMAIL_PATTERN);
+    const hasUsefulContactSignal = hasContactUsefulnessSignal(item);
 
     for (const email of emails) {
       const normalizedEmail = email.toLowerCase();
@@ -458,8 +486,10 @@ function extractContactsFromRun(cachedRun: CachedApifyRun, trustedItems: Trusted
           emailSource: "direct_found",
           sourceUrl: item.sourceUrl,
           sourceText: item.sourceText,
-          confidence: "high",
-          reason: "Company-domain email was found directly in a high-trust company-related post.",
+          confidence: hasUsefulContactSignal ? "high" : "medium",
+          reason: hasUsefulContactSignal
+            ? "Company-domain email was found directly in a high-trust company-related hiring/referral post."
+            : "Company-domain email was found directly in a trusted company-related post and is useful for email pattern discovery, but the post did not include a hiring/referral signal.",
         });
       }
     }

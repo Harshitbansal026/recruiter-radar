@@ -53,9 +53,21 @@ type HarvestApiLinkedInProfilePostsInput = {
   postedLimitDate?: string;
 };
 
+type HarvestApiLinkedInPostSearchInput = {
+  searchQueries: string[];
+  authorsCompanyPublicIdentifiers: string[];
+  maxPosts: number;
+  postedLimit?: "1h" | "24h" | "week" | "month" | "3months" | "6months" | "year";
+  postedLimitDate?: string;
+  sortBy: "relevance" | "date";
+  scrapeReactions: boolean;
+  scrapeComments: boolean;
+};
+
 type ApifyLinkedInPostInput =
   | SupremeCoderLinkedInPostInput
-  | HarvestApiLinkedInProfilePostsInput;
+  | HarvestApiLinkedInProfilePostsInput
+  | HarvestApiLinkedInPostSearchInput;
 
 type CompanyScrapePlan = {
   companyName: string;
@@ -87,6 +99,8 @@ type RunOptions = {
 };
 
 const DEFAULT_LIMIT_PER_SOURCE = 5;
+const DEFAULT_POST_SEARCH_WINDOW: HarvestApiLinkedInPostSearchInput["postedLimit"] = "3months";
+const LINKEDIN_QUERY_CHARACTER_LIMIT = 85;
 
 function printUsage() {
   console.log(`
@@ -101,7 +115,7 @@ Commands:
 Notes:
   - Dry-run does not call Apify or spend credits.
   - Live mode requires APIFY_TOKEN in a local .env file.
-  - The optional number controls limitPerSource.
+  - The optional number controls max posts per source/search query.
   - APIFY_LINKEDIN_POST_ACTOR controls the actor adapter.
 `.trim());
 }
@@ -186,6 +200,29 @@ function toSlug(value: string): string {
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
+}
+
+function splitList(value: string): string[] {
+  return value
+    .split(/[;,]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function unique(values: string[]): string[] {
+  return Array.from(new Set(values.filter(Boolean)));
+}
+
+function getLinkedInPublicIdentifier(linkedInUrl: string): string {
+  const match = linkedInUrl.match(/linkedin\.com\/company\/([^/?#]+)/i);
+
+  return match?.[1]?.toLowerCase() || "";
+}
+
+function fitLinkedInQuery(query: string): string {
+  return query.length <= LINKEDIN_QUERY_CHARACTER_LIMIT
+    ? query
+    : query.slice(0, LINKEDIN_QUERY_CHARACTER_LIMIT).trim();
 }
 
 function createTimestamp(): string {
@@ -275,7 +312,7 @@ function getKnownDomains(company: CompanyRow): string {
 }
 
 function getLinkedInPostActorId(): string {
-  return process.env.APIFY_LINKEDIN_POST_ACTOR || "harvestapi/linkedin-profile-posts";
+  return process.env.APIFY_LINKEDIN_POST_ACTOR || "harvestapi/linkedin-post-search";
 }
 
 function buildSupremeCoderInput(company: CompanyRow, limitPerSource: number): SupremeCoderLinkedInPostInput {
@@ -313,11 +350,72 @@ function buildHarvestApiInput(
   return input;
 }
 
+function buildSearchQueries(company: CompanyRow): string[] {
+  const domains = unique([
+    ...splitList(company.email_domains),
+    ...splitList(company.official_domains),
+  ]);
+  const hiringIntentQueries = [
+    "hiring software engineer",
+    "we are hiring",
+    "send resume",
+    "referral",
+    "recruiter",
+  ];
+  const emailPatternQueries = domains.flatMap((domain) => [
+    `@${domain}`,
+    `${domain} email`,
+  ]);
+
+  return unique([...hiringIntentQueries, ...emailPatternQueries]).map(fitLinkedInQuery);
+}
+
+function buildCompanyPublicIdentifiers(company: CompanyRow): string[] {
+  const linkedInIdentifier = getLinkedInPublicIdentifier(company.linkedin_company_url);
+  const slugIdentifiers = splitList(company.job_board_slugs).map((slug) => slug.toLowerCase());
+
+  return unique([linkedInIdentifier, ...slugIdentifiers]);
+}
+
+function buildHarvestApiPostSearchInput(
+  company: CompanyRow,
+  limitPerSource: number,
+): HarvestApiLinkedInPostSearchInput {
+  const authorsCompanyPublicIdentifiers = buildCompanyPublicIdentifiers(company);
+
+  if (authorsCompanyPublicIdentifiers.length === 0) {
+    throw new Error(
+      `${company.company_name} must include a LinkedIn company URL or company public identifier for post search.`,
+    );
+  }
+
+  const input: HarvestApiLinkedInPostSearchInput = {
+    searchQueries: buildSearchQueries(company),
+    authorsCompanyPublicIdentifiers,
+    maxPosts: limitPerSource,
+    postedLimit: DEFAULT_POST_SEARCH_WINDOW,
+    sortBy: "date",
+    scrapeReactions: false,
+    scrapeComments: false,
+  };
+
+  if (company.last_scraped_at) {
+    delete input.postedLimit;
+    input.postedLimitDate = company.last_scraped_at;
+  }
+
+  return input;
+}
+
 function buildApifyInput(
   company: CompanyRow,
   limitPerSource: number,
   actorId: string,
 ): ApifyLinkedInPostInput {
+  if (actorId === "harvestapi/linkedin-post-search") {
+    return buildHarvestApiPostSearchInput(company, limitPerSource);
+  }
+
   if (actorId === "harvestapi/linkedin-profile-posts") {
     return buildHarvestApiInput(company, limitPerSource);
   }
@@ -340,6 +438,18 @@ function buildScrapePlan(company: CompanyRow, limitPerSource: number): CompanySc
     jobBoardSlugs: company.job_board_slugs || "none",
     apifyInput: buildApifyInput(company, limitPerSource, actorId),
   };
+}
+
+function getEstimatedMaxPosts(input: ApifyLinkedInPostInput): number {
+  if ("searchQueries" in input) {
+    return input.searchQueries.length * input.maxPosts;
+  }
+
+  if ("maxPosts" in input) {
+    return input.maxPosts * input.targetUrls.length;
+  }
+
+  return input.limitPerSource * input.urls.length;
 }
 
 async function saveJson(filePath: string, data: unknown) {
@@ -413,6 +523,10 @@ async function main() {
 
   for (const scrapePlan of scrapePlans) {
     console.log(scrapePlan);
+    console.log({
+      company: scrapePlan.companyName,
+      estimatedMaxPosts: getEstimatedMaxPosts(scrapePlan.apifyInput),
+    });
 
     if (options.isLiveRun) {
       const company = companiesToScrape.find((row) => row.company_name === scrapePlan.companyName);
