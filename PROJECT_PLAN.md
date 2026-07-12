@@ -396,3 +396,4 @@ Company CSV with known domains and LinkedIn company URLs -> scrape recent compan
 - `0d80080` - Update plan log for contact filtering.
 - `f80a5f0` - Add HarvestAPI actor support.
 - `fb1c7c0` - Update plan log for HarvestAPI support.
+- `d7b167e` - Use LinkedIn post search for MVP discovery.
