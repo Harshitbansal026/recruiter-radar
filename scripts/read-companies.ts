@@ -96,9 +96,11 @@ type RunOptions = {
   isLiveRun: boolean;
   selectedCompanyName?: string;
   limitPerSource: number;
+  maxEstimatedPosts: number;
 };
 
 const DEFAULT_LIMIT_PER_SOURCE = 5;
+const DEFAULT_MAX_ESTIMATED_POSTS = 50;
 const DEFAULT_POST_SEARCH_WINDOW: HarvestApiLinkedInPostSearchInput["postedLimit"] = "3months";
 const LINKEDIN_QUERY_CHARACTER_LIMIT = 85;
 
@@ -111,11 +113,13 @@ Commands:
   npm run scrape:linkedin:dry -- "Example Company"
   npm run scrape:linkedin:dry -- "Example Company" 3
   npm run scrape:linkedin:live -- "Example Company" 3
+  npm run scrape:linkedin:live -- "Example Company" 3 --max-estimated-posts 25
 
 Notes:
   - Dry-run does not call Apify or spend credits.
   - Live mode requires APIFY_TOKEN in a local .env file.
   - The optional number controls max posts per source/search query.
+  - Live runs are blocked if estimated posts exceed --max-estimated-posts.
   - APIFY_LINKEDIN_POST_ACTOR controls the actor adapter.
 `.trim());
 }
@@ -269,6 +273,7 @@ function getSelectedCompanyName(args: string[]): string | undefined {
 function getRunOptions(): RunOptions {
   const args = process.argv.slice(2);
   const limitArg = getArgValue("--limit");
+  const maxEstimatedPostsArg = getArgValue("--max-estimated-posts");
   const positionalLimitArg = args.find((argument) => /^\d+$/.test(argument));
 
   return {
@@ -277,6 +282,9 @@ function getRunOptions(): RunOptions {
     limitPerSource: limitArg || positionalLimitArg
       ? parsePositiveInteger(limitArg || positionalLimitArg || "", "limit")
       : DEFAULT_LIMIT_PER_SOURCE,
+    maxEstimatedPosts: maxEstimatedPostsArg
+      ? parsePositiveInteger(maxEstimatedPostsArg, "max-estimated-posts")
+      : DEFAULT_MAX_ESTIMATED_POSTS,
   };
 }
 
@@ -513,6 +521,7 @@ async function main() {
   console.log(`Skipped ${skippedCompanies.length} companies with existing domain data`);
   console.log(options.isLiveRun ? "Mode: live Apify run" : "Mode: dry run");
   console.log(`limitPerSource: ${options.limitPerSource}`);
+  console.log(`maxEstimatedPosts guard: ${options.maxEstimatedPosts}`);
 
   const scrapePlans = companiesToScrape.map((company) =>
     buildScrapePlan(company, options.limitPerSource),
@@ -523,12 +532,19 @@ async function main() {
 
   for (const scrapePlan of scrapePlans) {
     console.log(scrapePlan);
+    const estimatedMaxPosts = getEstimatedMaxPosts(scrapePlan.apifyInput);
     console.log({
       company: scrapePlan.companyName,
-      estimatedMaxPosts: getEstimatedMaxPosts(scrapePlan.apifyInput),
+      estimatedMaxPosts,
     });
 
     if (options.isLiveRun) {
+      if (estimatedMaxPosts > options.maxEstimatedPosts) {
+        throw new Error(
+          `${scrapePlan.companyName} live run is blocked: estimated ${estimatedMaxPosts} posts exceeds maxEstimatedPosts ${options.maxEstimatedPosts}. Lower the query limit or pass a higher --max-estimated-posts value intentionally.`,
+        );
+      }
+
       const company = companiesToScrape.find((row) => row.company_name === scrapePlan.companyName);
 
       if (!company) {

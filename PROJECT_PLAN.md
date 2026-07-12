@@ -83,6 +83,7 @@ Goal: Prove the data pipeline before building the full UI.
   - hiring intent discovery
   - company email pattern discovery
 - [x] Avoid manual profile URL input for the MVP unless it is used only as a temporary debugging fixture.
+- [x] Add a live-run estimated post guard to block accidental high-credit Apify runs.
 
 ## Phase 2: Domain and Email Extraction
 
@@ -318,6 +319,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - HarvestAPI `harvestapi/linkedin-profile-posts` is the current replacement test actor; treat its cost as USD 2 per 1,000 posts.
 - HarvestAPI `harvestapi/linkedin-post-search` should be the next MVP actor because it can search posts by query and filter by company/author before scraping, reducing paid irrelevant post usage.
 - Keyword filtering after scraping still consumes Apify post credits, so filtering must happen as early as possible through actor inputs.
+- Live Apify runs are blocked by a default estimated post guard of 50 posts per company unless intentionally overridden.
 - Firecrawl Free plan currently includes 1,000 credits/month; scrape/crawl/map cost 1 credit per page and search costs 2 credits per 10 results.
 - Firecrawl has no pure pay-per-use monthly plan; upgrade tiers are monthly subscriptions, so the project should use Firecrawl only as targeted fallback/enrichment.
 - Actor output shape may change.
