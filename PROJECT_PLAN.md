@@ -401,3 +401,4 @@ Company CSV with known domains and LinkedIn company URLs -> scrape recent compan
 - `fb1c7c0` - Update plan log for HarvestAPI support.
 - `d7b167e` - Use LinkedIn post search for MVP discovery.
 - `f91b882` - Use CSV company identity during extraction.
+- `89e0427` - Add Apify live run post guard.
