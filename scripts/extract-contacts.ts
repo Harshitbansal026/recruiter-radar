@@ -393,8 +393,7 @@ function isCompanyAffiliatedAuthor(item: TrustedItem, identity: CompanyIdentity)
 
   return (
     normalizedAliases.includes(normalizedAuthorName) ||
-    lowerCaseAliases.some((alias) => normalizedRole.includes(` at ${alias}`) || normalizedRole.includes(alias)) ||
-    normalizedRole === "company page"
+    lowerCaseAliases.some((alias) => normalizedRole.includes(` at ${alias}`) || normalizedRole.includes(alias))
   );
 }
 

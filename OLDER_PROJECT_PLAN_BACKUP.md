@@ -20,12 +20,6 @@ After every commit:
 No project commit should be considered complete unless this file has been checked before and after the commit.
 Administrative commits that only update this commit log are not required to list themselves, which avoids an infinite commit-log update loop.
 
-Emergency backup note:
-
-- `OLDER_PROJECT_PLAN_BACKUP.md` is a static emergency snapshot of the older plan.
-- Do not use it for routine checks, commits, or planning.
-- Open it only if the active pipeline breaks badly and the user explicitly asks to recover or compare against the older plan.
-
 ## Phase 0: Project Setup
 
 - [x] Create Git repository.
@@ -91,11 +85,6 @@ Goal: Prove the data pipeline before building the full UI.
 - [x] Avoid manual profile URL input for the MVP unless it is used only as a temporary debugging fixture.
 - [x] Add a live-run estimated post guard to block accidental high-credit Apify runs.
 - [x] Add low-limit Apify search diagnostics to test whether actor filters work as documented.
-- [x] Confirm through diagnostics that `authorsCompanyPublicIdentifiers` is unreliable for relevance filtering.
-- [ ] Restrict `harvestapi/linkedin-post-search` to secondary company/domain-specific searches only:
-  - direct email in post text
-  - company-mentioned hiring/referral terms
-  - domain-mentioned terms such as `@company.com`
 
 ## Phase 2: Domain and Email Extraction
 
@@ -129,18 +118,11 @@ Goal: Extract only high-trust company-related contact and domain intelligence fr
 
 ## Phase 3: Firecrawl Company Identity Enrichment
 
-Goal: Use Firecrawl as a fallback/enrichment source to discover official company identity and extract literal public company emails from official web pages.
+Goal: Use Firecrawl as a fallback/enrichment source to discover official company identity when Apify/LinkedIn data is incomplete.
 
 - [ ] Keep Firecrawl out of the first working prototype unless company identity is too weak to run Apify safely.
 - [ ] Use Firecrawl only when company identity is missing or low confidence.
 - [ ] Scrape/search official company websites, careers pages, contact pages, about/team pages, and blog/author pages.
-- [ ] Extract literal visible email addresses from official company pages:
-  - contact pages
-  - team/about pages
-  - press/media pages
-  - blog/author pages
-  - careers pages
-- [ ] Use direct official-site emails as seeds for company email pattern inference.
 - [ ] Discover and classify:
   - official domains
   - old/rebranded domains
@@ -157,12 +139,6 @@ Goal: Use Firecrawl as a fallback/enrichment source to discover official company
 
 Goal: Turn company identity and domain intelligence into clean, company-affiliated contact candidates and work-email candidates.
 
-- [ ] Use `harvestapi/linkedin-company-employees` as the primary people discovery actor.
-- [ ] Use base/short profile mode only; do not use the paid email-search add-on.
-- [ ] Pull only 30-40 recruiter/talent/HR-related profiles per company.
-- [ ] Freeze v1 demo scope to 15 target companies before broadening.
-- [ ] Require independent company-affiliation confirmation before accepting a discovered person as relevant.
-- [ ] Do not trust any single source to both discover and confirm a candidate.
 - [x] Treat hiring/referral keywords as a pre-save usefulness gate, not as extra CSV output fields.
 - [x] Accept direct company-domain emails from non-hiring posts for email pattern discovery.
 - [x] Do not treat non-hiring email-pattern evidence as a recruiter lead unless the person/post also passes usefulness checks.
@@ -197,42 +173,27 @@ Goal: Turn company identity and domain intelligence into clean, company-affiliat
 
 Goal: Build our own email confidence layer without depending on third-party verification APIs.
 
-Learning reminder:
-
-- Phase 5 is a teaching-heavy phase.
-- Before and during implementation, explain DNS, MX, SMTP, catch-all behavior, greylisting, blocked probing, caching, and confidence labels from first principles.
-- Explain every implementation step in simple terms before coding it so the project can be defended clearly in interviews.
-
-- [ ] Define a validation result format shared by direct and inferred emails.
 - [ ] Validate email syntax.
 - [ ] Check whether the domain exists.
 - [ ] Check MX records.
 - [ ] Add free/disposable domain detection.
 - [ ] Detect likely catch-all domains where possible.
-- [ ] Treat catch-all domains as `accept_all` or `unverified`, not valid.
-- [ ] Detect catch-all behavior by probing a second random mailbox on the same domain after the real candidate.
 - [ ] Add limited SMTP handshake checks:
   - connect to MX server
   - send `HELO` or `EHLO`
   - send `MAIL FROM`
   - send `RCPT TO`
   - stop before sending message data
-- [ ] Treat SMTP `450` and similar temporary responses as `greylisted_retry_later`.
-- [ ] Treat blocked probing, timeouts, and corporate anti-probing behavior as `unknown`, not invalid.
 - [ ] Return statuses:
   - `high_confidence`
   - `medium_confidence`
   - `low_confidence`
-  - `accept_all`
-  - `greylisted_retry_later`
   - `risky`
   - `invalid`
   - `unknown`
 - [ ] Cache all verification results.
 - [ ] Add low concurrency and rate limits.
 - [ ] Document that SMTP probing does not guarantee mailbox validity.
-- [ ] Add validation results to contact CSV outputs.
-- [ ] Use validation status when deciding qualified contacts.
 
 Cost notes:
 
@@ -360,10 +321,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - HarvestAPI `harvestapi/linkedin-post-search` should be the next MVP actor because it can search posts by query and filter by company/author before scraping, reducing paid irrelevant post usage.
 - Keyword filtering after scraping still consumes Apify post credits, so filtering must happen as early as possible through actor inputs.
 - Live Apify runs are blocked by a default estimated post guard of 50 posts per company unless intentionally overridden.
-- `harvestapi/linkedin-post-search` diagnostics proved `authorsCompanyPublicIdentifiers` can return unrelated posts, so it must not be trusted as a relevance filter.
-- `harvestapi/linkedin-company-employees` is the primary people discovery actor going forward, limited to base/short mode and 30-40 profiles per company.
-- v1 demo scope is frozen at 15 target companies, so expected people-discovery volume is roughly 450-600 profiles.
-- Use one Apify account/API key; do not rely on rotating emails or trial credits as part of the workflow.
+- `harvestapi/linkedin-post-search` filter behavior must be proven with diagnostics before increasing live scrape limits.
 - Firecrawl Free plan currently includes 1,000 credits/month; scrape/crawl/map cost 1 credit per page and search costs 2 credits per 10 results.
 - Firecrawl has no pure pay-per-use monthly plan; upgrade tiers are monthly subscriptions, so the project should use Firecrawl only as targeted fallback/enrichment.
 - Actor output shape may change.
@@ -373,7 +331,6 @@ Goal: Make the project presentable for recruiters and interviews.
 - HarvestAPI live output uses `linkedinUrl`, `content`, and nested `author` fields; extraction mapping is implemented and verified against the HCLTech cache.
 - LinkedIn scraping has platform and compliance risk; use public data only and low volume.
 - Many posts will not contain emails.
-- Literal emails are expected to be more common on official company websites than in LinkedIn posts.
 - Strict company-trust filtering may reduce contact volume but should improve output quality.
 - Current high-trust filtering uses CSV-backed company aliases and known domains; full source-evidence identity graph enrichment is still pending.
 - Company identity matching can fail for acquisitions, rebrands, abbreviations, and unusual domains unless aliases/domains are maintained.
@@ -381,7 +338,7 @@ Goal: Make the project presentable for recruiters and interviews.
 - SMTP checks may be blocked by mail servers or hosting providers.
 - Serverless platforms may block outbound SMTP.
 - Firecrawl remains optional fallback for domain discovery, not the first source.
-- Firecrawl should enrich company identity and extract literal official-site emails for email-pattern seeds.
+- Firecrawl should enrich company identity, not replace Apify's LinkedIn hiring/post signal pipeline.
 - Recruiter/person email generation must be clearly labeled as inferred unless directly found in source text.
 - Personal emails should not be exported as outreach emails; company-affiliated people with personal emails can still be used for company-domain candidate email generation.
 - Job-board domains are source evidence only and must not be used as candidate email domains.
@@ -394,16 +351,12 @@ Goal: Make the project presentable for recruiters and interviews.
 - Initial data source: Apify `supreme_coder/linkedin-post`.
 - Current Apify status: `supreme_coder/linkedin-post` is under maintenance as of June 3, 2026, so live scraping is paused to avoid wasting credits.
 - Current replacement Apify test actor: `harvestapi/linkedin-profile-posts`.
-- `harvestapi/linkedin-post-search` is secondary only; use it for company/domain-specific post text signals and occasional literal emails.
-- Primary people discovery actor: `harvestapi/linkedin-company-employees`, base/short mode only, no email-search add-on.
+- Next MVP discovery actor: `harvestapi/linkedin-post-search`, because it supports company-scoped search queries and should reduce irrelevant paid scraping.
 - HarvestAPI live test result: HCLTech company URL with `maxPosts = 3` returned 3 posts and cached successfully on June 4, 2026.
 - HarvestAPI extraction test result: HCLTech cache produced 0 contacts and 1 company career domain (`careers.hcltech.com`), confirming the pipeline does not invent contacts from marketing/career-branding posts.
-- Initial v1 scope: 15 frozen demo companies.
-- Firecrawl role: company identity enrichment plus literal public email extraction from official company pages.
+- Initial scope: 30 companies.
+- Firecrawl role: planned enrichment/fallback after the Apify-first MVP is working; use it earlier only when company identity is too weak to safely search/filter LinkedIn data.
 - Email verification strategy: custom confidence service first, third-party APIs optional.
-- Next build priority: Phase 5 validation foundation before more discovery tuning.
-- Email discovery model: direct public emails and inferred/generated emails are the only two email paths; both must go through validation.
-- v1 finish line: produce at least one evidence-backed, correctly confidence-labeled contact for at least half of the frozen companies.
 - Export strategy: all contacts and qualified contacts.
 - Product positioning: recruiter discovery and outreach assistant, not a spam or bulk-scraping tool.
 - Company identity graph, high-trust source filtering, and company-affiliated generated candidate emails are core project features, not optional add-ons.

@@ -2,3 +2,4 @@ company_name,company_aliases,linkedin_company_url,linkedin_search_url,official_d
 Example Company,"example,example company",https://www.linkedin.com/company/example-company/,,example.com,,example.com,example.com,,example-company,high,true,,done
 Another Startup,"another,another startup",https://www.linkedin.com/company/another-startup/,,,,,,,another-startup,,false,2026-05-01,pending
 HCLTech,"hcltech,hcl technologies,hcl",https://www.linkedin.com/company/hcltech/,,hcltech.com,hcl.com,hcltech.com,hcltech.com,,hcltech,medium,false,,pending
+Policybazaar.com,"policybazaar,policy bazaar,policybazaar.com",https://www.linkedin.com/company/policybazaar/,,policybazaar.com,,policybazaar.com,policybazaar.com,,policybazaar,medium,false,,pending
